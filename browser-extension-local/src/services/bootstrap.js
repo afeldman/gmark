@@ -135,90 +135,105 @@ export class BootstrapService {
     const seenUrls = new Set();
     let processed = 0;
 
-    for (const bookmark of bookmarks) {
-      try {
-        // Skip Ordner
-        if (bookmark.children) {
-          processed++;
-          continue;
+    // Filtere Duplikate und Ordner
+    const filteredBookmarks = bookmarks.filter((bookmark) => {
+      // Skip Ordner
+      if (bookmark.children) return false;
+
+      // Prüfe auf Duplikate (normalisierte URL)
+      const normalizedUrl = StorageManager.normalizeUrl(bookmark.url);
+      if (seenUrls.has(normalizedUrl)) {
+        console.log(`🗑️ Duplikat entfernt: ${bookmark.title}`);
+        // Lösche Duplikat aus Chrome Bookmarks (async, aber nicht awaiten)
+        if (bookmark.id) {
+          chrome.bookmarks.remove(bookmark.id).catch(() => {});
         }
-
-        // Prüfe auf Duplikate (normalisierte URL)
-        const normalizedUrl = StorageManager.normalizeUrl(bookmark.url);
-        if (seenUrls.has(normalizedUrl)) {
-          console.log(`🗑️ Duplikat entfernt: ${bookmark.title}`);
-          // Lösche Duplikat aus Chrome Bookmarks
-          if (bookmark.id) {
-            await chrome.bookmarks.remove(bookmark.id);
-          }
-          processed++;
-          continue;
-        }
-
-        seenUrls.add(normalizedUrl);
-
-        // Prüfe ob URL erreichbar ist und ermittle Titel
-        const { reachable: isReachable, title: resolvedTitle } =
-          await this.checkUrlReachable(bookmark.url);
-
-        if (isReachable) {
-          // Optional: Titel aktualisieren
-          if (resolvedTitle && resolvedTitle !== bookmark.title) {
-            try {
-              await chrome.bookmarks.update(bookmark.id, {
-                title: resolvedTitle,
-              });
-              bookmark.title = resolvedTitle;
-              console.log(
-                `📝 Titel aktualisiert: ${resolvedTitle} (vorher: ${bookmark.title})`
-              );
-            } catch (e) {
-              console.warn("⚠️ Konnte Titel nicht aktualisieren:", e);
-            }
-          }
-
-          // Verschiebe zu init-Ordner
-          if (bookmark.id && initFolderId) {
-            await chrome.bookmarks.move(bookmark.id, {
-              parentId: initFolderId,
-            });
-          }
-          initBookmarks.push(bookmark);
-          console.log(
-            `✅ [${processed}/${bookmarks.length}] ${bookmark.title} → init`
-          );
-        } else {
-          // Verschiebe zu notresponding-Ordner
-          if (bookmark.id && notRespondingFolderId) {
-            await chrome.bookmarks.move(bookmark.id, {
-              parentId: notRespondingFolderId,
-            });
-          }
-          notRespondingBookmarks.push(bookmark);
-          console.log(
-            `⚠️ [${processed}/${bookmarks.length}] ${bookmark.title} → notresponding`
-          );
-        }
-      } catch (error) {
-        console.error(`❌ Fehler bei ${bookmark.title}:`, error);
+        return false;
       }
 
-      processed++;
+      seenUrls.add(normalizedUrl);
+      return true;
+    });
+
+    // Parallelisiere Reachability-Checks in Batches (max 5 parallel)
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < filteredBookmarks.length; i += BATCH_SIZE) {
+      const batch = filteredBookmarks.slice(i, i + BATCH_SIZE);
+      console.log(
+        `⚡ Verarbeite Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(
+          filteredBookmarks.length / BATCH_SIZE
+        )} (${batch.length} URLs)...`
+      );
+
+      // Führe Reachability-Checks parallel durch
+      const results = await Promise.all(
+        batch.map((bookmark) => this.checkUrlReachable(bookmark.url))
+      );
+
+      // Verarbeite Ergebnisse
+      for (let j = 0; j < batch.length; j++) {
+        const bookmark = batch[j];
+        const { reachable: isReachable, title: resolvedTitle } = results[j];
+
+        try {
+          if (isReachable) {
+            // Optional: Titel aktualisieren
+            if (resolvedTitle && resolvedTitle !== bookmark.title) {
+              try {
+                await chrome.bookmarks.update(bookmark.id, {
+                  title: resolvedTitle,
+                });
+                bookmark.title = resolvedTitle;
+                console.log(`📝 Titel aktualisiert: ${resolvedTitle}`);
+              } catch (e) {
+                console.warn("⚠️ Konnte Titel nicht aktualisieren:", e);
+              }
+            }
+
+            // Verschiebe zu init-Ordner
+            if (bookmark.id && initFolderId) {
+              await chrome.bookmarks.move(bookmark.id, {
+                parentId: initFolderId,
+              });
+            }
+            initBookmarks.push(bookmark);
+            console.log(
+              `✅ [${processed + j + 1}/${filteredBookmarks.length}] ${
+                bookmark.title
+              } → init`
+            );
+          } else {
+            // Verschiebe zu notresponding-Ordner
+            if (bookmark.id && notRespondingFolderId) {
+              await chrome.bookmarks.move(bookmark.id, {
+                parentId: notRespondingFolderId,
+              });
+            }
+            notRespondingBookmarks.push(bookmark);
+            console.log(
+              `⚠️ [${processed + j + 1}/${filteredBookmarks.length}] ${
+                bookmark.title
+              } → notresponding`
+            );
+          }
+        } catch (error) {
+          console.error(`❌ Fehler bei ${bookmark.title}:`, error);
+        }
+      }
+
+      processed += batch.length;
 
       // Progress-Update
       if (onProgress) {
         onProgress({
           processed,
-          total: bookmarks.length,
+          total: filteredBookmarks.length,
           success: initBookmarks.length,
           failed: 0,
           skipped: notRespondingBookmarks.length,
-          percentage: Math.round((processed / bookmarks.length) * 100),
+          percentage: Math.round((processed / filteredBookmarks.length) * 100),
         });
       }
-
-      // Rate Limiting
-      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     return { initBookmarks, notRespondingBookmarks };
@@ -289,64 +304,89 @@ export class BootstrapService {
       bookmarks: [],
     };
 
-    for (const bookmark of initBookmarks) {
-      try {
-        // Skip bereits gespeicherte Bookmarks
-        const existing = await StorageManager.getBookmarkByNormalizedUrl(
-          StorageManager.normalizeUrl(bookmark.url)
-        );
-        if (existing) {
-          results.skipped++;
-          this.bookmarksProcessed++;
-          continue;
-        }
+    // Parallelisiere KI-Klassifikation in Batches (max 3 parallel, KI ist I/O-bound)
+    const BATCH_SIZE = 3;
+    let processedCount = 0;
 
-        // Klassifiziere mit KI
-        const classification = await ClassificationService.classify({
+    for (let i = 0; i < initBookmarks.length; i += BATCH_SIZE) {
+      const batch = initBookmarks.slice(i, i + BATCH_SIZE);
+      console.log(
+        `⚡ Klassifiziere Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(
+          initBookmarks.length / BATCH_SIZE
+        )} (${batch.length} Bookmarks)...`
+      );
+
+      // Führe Klassifikationen parallel durch
+      const classificationPromises = batch.map((bookmark) =>
+        ClassificationService.classify({
           title: bookmark.title || "Untitled",
           description: bookmark.tags?.join(", ") || "",
           url: bookmark.url,
-        });
+        }).then((classification) => ({
+          bookmark,
+          classification,
+        }))
+      );
 
-        // Speichere in DB (wird in Root-Ordner der jeweiligen Kategorie gespeichert)
-        const savedBookmark = await StorageManager.addBookmark({
-          url: bookmark.url,
-          title: bookmark.title || "Untitled",
-          category: classification.category,
-          confidence: classification.confidence,
-          tags: classification.tags,
-          summary: classification.summary,
-          color: classification.color,
-          method: "bootstrap-classification",
-          chromeId: bookmark.id,
-          migratedAt: Date.now(),
-        });
+      const classificationResults = await Promise.all(classificationPromises);
 
-        // Verschiebe aus init-Ordner in Kategorien-Ordner (Root)
-        const categoryFolderId = await this.getOrCreateBookmarkFolder(
-          classification.category
-        );
-        if (bookmark.id && categoryFolderId) {
-          await chrome.bookmarks.move(bookmark.id, {
-            parentId: categoryFolderId,
-          });
-          console.log(
-            `📁 Verschoben: ${bookmark.title} → ${classification.category}`
+      // Verarbeite Klassifikationsergebnisse
+      for (const { bookmark, classification } of classificationResults) {
+        try {
+          // Skip bereits gespeicherte Bookmarks
+          const existing = await StorageManager.getBookmarkByNormalizedUrl(
+            StorageManager.normalizeUrl(bookmark.url)
           );
+          if (existing) {
+            results.skipped++;
+            processedCount++;
+            this.bookmarksProcessed++;
+            continue;
+          }
+
+          // Speichere in DB
+          const savedBookmark = await StorageManager.addBookmark({
+            url: bookmark.url,
+            title: bookmark.title || "Untitled",
+            category: classification.category,
+            confidence: classification.confidence,
+            tags: classification.tags,
+            summary: classification.summary,
+            color: classification.color,
+            method: "bootstrap-classification",
+            chromeId: bookmark.id,
+            migratedAt: Date.now(),
+          });
+
+          // Verschiebe aus init-Ordner in Kategorien-Ordner (Root)
+          const categoryFolderId = await this.getOrCreateBookmarkFolder(
+            classification.category
+          );
+          if (bookmark.id && categoryFolderId) {
+            await chrome.bookmarks.move(bookmark.id, {
+              parentId: categoryFolderId,
+            });
+            console.log(
+              `📁 Verschoben: ${bookmark.title} → ${classification.category}`
+            );
+          }
+
+          results.success++;
+          results.bookmarks.push(savedBookmark);
+
+          console.log(
+            `✅ [${processedCount + 1}/${initBookmarks.length}] ${
+              bookmark.title
+            } → ${classification.category}`
+          );
+        } catch (error) {
+          console.error(`❌ Fehler bei ${bookmark.title}:`, error);
+          results.failed++;
         }
 
-        results.success++;
-        results.bookmarks.push(savedBookmark);
-
-        console.log(
-          `✅ [${this.bookmarksProcessed}/${this.bookmarksToProcess}] ${bookmark.title} → ${classification.category}`
-        );
-      } catch (error) {
-        console.error(`❌ Fehler bei ${bookmark.title}:`, error);
-        results.failed++;
+        processedCount++;
+        this.bookmarksProcessed++;
       }
-
-      this.bookmarksProcessed++;
 
       // Progress-Update
       if (onProgress) {
@@ -361,9 +401,6 @@ export class BootstrapService {
           ),
         });
       }
-
-      // Rate Limiting
-      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     // Lösche leeren init-Ordner wenn alle verarbeitet wurden
@@ -415,14 +452,6 @@ export class BootstrapService {
    */
   async reorganizeChromeBookmarks(bookmarks) {
     try {
-      // Finde oder erstelle "GMARK" Ordner
-      let gmmarkFolderId = await this.getOrCreateBookmarkFolder("GMARK Local");
-
-      if (!gmmarkFolderId) {
-        console.warn("⚠️ Konnte GMARK Ordner nicht erstellen");
-        return;
-      }
-
       // Gruppiere nach Kategorie
       const byCategory = {};
       for (const bookmark of bookmarks) {
@@ -434,10 +463,8 @@ export class BootstrapService {
 
       // Erstelle Ordner pro Kategorie und verschiebe Bookmarks
       for (const [category, items] of Object.entries(byCategory)) {
-        const categoryFolderId = await this.getOrCreateBookmarkFolder(
-          category,
-          gmmarkFolderId
-        );
+        // Erstelle Kategorie-Ordner direkt im Standard-Bookmarks-Bereich (Other Bookmarks)
+        const categoryFolderId = await this.getOrCreateBookmarkFolder(category);
 
         if (!categoryFolderId) continue;
 
@@ -449,9 +476,7 @@ export class BootstrapService {
                 parentId: categoryFolderId,
               });
 
-              console.log(
-                `📁 Verschoben: ${bookmark.title} → GMARK Local/${category}`
-              );
+              console.log(`📁 Verschoben: ${bookmark.title} → ${category}`);
             }
           } catch (error) {
             console.warn(
@@ -502,19 +527,57 @@ export class BootstrapService {
 
       collectEmpty(tree);
 
-      if (emptyFolders.length === 0) {
+      // Dedupliziere IDs
+      const uniqueEmpty = Array.from(new Set(emptyFolders));
+
+      if (uniqueEmpty.length === 0) {
         console.log("✅ Keine leeren Ordner gefunden");
         return;
       }
 
-      console.log("🗑️ Leere Ordner gefunden:", emptyFolders.length);
-      for (const id of emptyFolders) {
-        try {
-          await chrome.bookmarks.removeTree(id);
-          console.log(`  🗑️ Ordner gelöscht: ${id}`);
-        } catch (error) {
-          console.warn(`  ⚠️ Konnte Ordner ${id} nicht löschen:`, error);
+      console.log("🗑️ Leere Ordner gefunden:", uniqueEmpty.length);
+
+      // In kleinen Batches löschen, Existenz vorher prüfen
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < uniqueEmpty.length; i += BATCH_SIZE) {
+        const batch = uniqueEmpty.slice(i, i + BATCH_SIZE);
+        console.log(
+          `  🔹 Lösche Batch ${i / BATCH_SIZE + 1}/${Math.ceil(
+            uniqueEmpty.length / BATCH_SIZE
+          )} (Größe: ${batch.length})`
+        );
+        for (const id of batch) {
+          try {
+            // Prüfe Existenz
+            const nodes = await chrome.bookmarks.get(id).catch(() => []);
+            if (!nodes || nodes.length === 0) {
+              console.log(`   ⏭️ Übersprungen (nicht gefunden): ${id}`);
+              continue;
+            }
+            const node = nodes[0];
+            if (node.url) {
+              // Sicherheit: nur Ordner löschen
+              console.log(`   ⏭️ Übersprungen (kein Ordner): ${id}`);
+              continue;
+            }
+
+            await chrome.bookmarks.removeTree(id);
+            console.log(`   🗑️ Ordner gelöscht: ${id}`);
+          } catch (error) {
+            // Häufig: "Can't find bookmark for id." → ignorieren
+            if (
+              String(error?.message || error).includes("Can't find bookmark")
+            ) {
+              console.log(`   ⏭️ Bereits entfernt / nicht vorhanden: ${id}`);
+            } else {
+              console.warn(`   ⚠️ Konnte Ordner ${id} nicht löschen:`, error);
+            }
+          }
+          // Kurze Pause, um API nicht zu überlasten
+          await new Promise((r) => setTimeout(r, 5));
         }
+        // kleine Pause zwischen Batches
+        await new Promise((r) => setTimeout(r, 50));
       }
 
       console.log("✅ Leere Ordner bereinigt");

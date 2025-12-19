@@ -11,6 +11,7 @@
 
 import StorageManager from "./utils/storage.js";
 import BootstrapService from "./services/bootstrap.js";
+import StorageOptimizer from "./utils/storage-optimizer.js";
 
 // Initialisiere Kontextmenü
 chrome.runtime.onInstalled.addListener(async () => {
@@ -48,6 +49,22 @@ chrome.runtime.onInstalled.addListener(async () => {
   console.log("🔧 Starte Bootstrap-Prozess...");
   console.log("=".repeat(60) + "\n");
 
+  // Leere Ordner beim Start bereinigen
+  console.log("🧹 Bereinige leere Bookmark-Ordner (Startup)...");
+  try {
+    await BootstrapService.deleteEmptyBookmarkFolders();
+    console.log("  ✅ Bereinigung abgeschlossen");
+  } catch (error) {
+    console.warn("  ⚠️ Bereinigung fehlgeschlagen:", error);
+  }
+
+  // Speicher prüfen und optimieren
+  console.log("\n💾 Prüfe Speichernutzung...");
+  const storageStatus = await StorageOptimizer.getStorageStatus();
+  if (storageStatus?.status !== "ok") {
+    await StorageOptimizer.optimizeIfNeeded();
+  }
+
   // Tageslimit-Defaults für KI
   console.log("\n⚙️ Setze Token-Limits...");
   const today = new Date();
@@ -64,6 +81,21 @@ chrome.runtime.onInstalled.addListener(async () => {
       `⏳ Bootstrap Progress: ${progress.processed}/${progress.total} (${progress.percentage}%) | ✅ ${progress.success} | ❌ ${progress.failed} | ⏭️ ${progress.skipped}`
     );
   });
+});
+
+// Beim Browser-Start ebenfalls leere Ordner bereinigen
+chrome.runtime.onStartup.addListener(async () => {
+  console.log("\n🧹 onStartup: Bereinige leere Ordner & prüfe Speicher...");
+  try {
+    // Parallelisiere Ordner-Cleanup und Speicher-Optimierung
+    await Promise.all([
+      BootstrapService.deleteEmptyBookmarkFolders(),
+      StorageOptimizer.optimizeIfNeeded(),
+    ]);
+    console.log("  ✅ Bereinigung und Speicher-Check abgeschlossen");
+  } catch (error) {
+    console.warn("  ⚠️ Fehler:", error);
+  }
 });
 
 // Kontextmenü-Handler
@@ -89,8 +121,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "SAVE_BOOKMARK") {
     console.log("  💾 Speichere Bookmark:", message.bookmark.title);
     saveBookmark(message.bookmark)
-      .then((result) => {
+      .then(async (result) => {
         console.log("  ✅ Bookmark gespeichert:", result.id);
+        // Nach Speichern: Speicher prüfen
+        StorageOptimizer.getStorageStatus().catch(() => {});
         sendResponse(result);
       })
       .catch((error) => {
@@ -141,6 +175,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
       .catch((error) => {
         console.error("  ❌ Fehler beim Laden der Statistiken:", error);
+        sendResponse({ error: error.message });
+      });
+    return true;
+  }
+
+  if (message.type === "GET_STORAGE_STATUS") {
+    console.log("\n💾 Lade Speicherstatus...");
+    StorageOptimizer.getStorageStatus()
+      .then((status) => {
+        console.log("  ✅ Speicherstatus:", status);
+        sendResponse(status);
+      })
+      .catch((error) => {
+        console.error("  ❌ Fehler beim Laden des Speicherstatus:", error);
         sendResponse({ error: error.message });
       });
     return true;
@@ -305,6 +353,27 @@ async function savePage(url, title, tabId) {
         url: url,
       });
 
+      // Generiere Seitenzusammenfassung
+      let pageSummary = "";
+      if (response.pageText) {
+        console.log("  📝 Erstelle Seitenzusammenfassung...");
+        try {
+          const aiModule = await import("./types/ai.js");
+          const { checkCanCreateSession, createLanguageModelSession, summarizeWithAI, safeDestroySession } = aiModule;
+          
+          if (await checkCanCreateSession()) {
+            const session = await createLanguageModelSession();
+            if (session) {
+              pageSummary = await summarizeWithAI(session, response.pageText, title) || "";
+              safeDestroySession(session);
+              console.log("  ✅ Zusammenfassung erstellt");
+            }
+          }
+        } catch (error) {
+          console.warn("  ⚠️ Zusammenfassung fehlgeschlagen:", error);
+        }
+      }
+
       bookmark = {
         url,
         title: title || "Untitled",
@@ -313,7 +382,7 @@ async function savePage(url, title, tabId) {
         screenshot: response.screenshot || "",
         category: classification.category,
         tags: classification.tags,
-        summary: classification.summary,
+        summary: pageSummary || classification.summary,
         confidence: classification.confidence,
         color: classification.color,
         method: "ai-classification",
@@ -400,11 +469,32 @@ async function saveBookmark(bookmark) {
         url: bookmark.url,
       });
 
+      // Generiere Seitenzusammenfassung wenn Content verfügbar
+      let pageSummary = "";
+      if (bookmark.content) {
+        console.log("  📝 Erstelle Seitenzusammenfassung...");
+        try {
+          const aiModule = await import("./types/ai.js");
+          const { checkCanCreateSession, createLanguageModelSession, summarizeWithAI, safeDestroySession } = aiModule;
+          
+          if (await checkCanCreateSession()) {
+            const session = await createLanguageModelSession();
+            if (session) {
+              pageSummary = await summarizeWithAI(session, bookmark.content, bookmark.title) || "";
+              safeDestroySession(session);
+              console.log("  ✅ Zusammenfassung erstellt");
+            }
+          }
+        } catch (error) {
+          console.warn("  ⚠️ Zusammenfassung fehlgeschlagen:", error);
+        }
+      }
+
       finalBookmark = {
         ...bookmark,
         category: classification.category,
         tags: classification.tags,
-        summary: classification.summary,
+        summary: pageSummary || classification.summary,
         confidence: classification.confidence,
         color: classification.color,
         method: "ai-classification",

@@ -16,8 +16,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 function extractPageContent() {
+  const pageText = extractMainContent();
   return {
-    content: extractMainContent(),
+    content: pageText,
     description:
       getMetaDescription() || getOGDescription() || getFirstParagraph(),
     title: document.title,
@@ -25,6 +26,7 @@ function extractPageContent() {
     keywords: getMetaKeywords(),
     headings: getHeadings(),
     images: getImages(),
+    pageText: pageText,
     timestamp: Date.now(),
   };
 }
