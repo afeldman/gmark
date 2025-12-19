@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="16" height="16" fill="#0066cc" rx="2"/>
+  
+  <!-- Bookmark shape -->
+  <path d="M 4 4 
+           L 12 4 
+           L 12 12 
+           L 8 10 
+           L 4 12 Z" 
+        fill="#ffffff" 
+        stroke="#ffffff" 
+        stroke-width="2"/>
+  
+  <!-- AI indicator dot -->
+  <circle cx="12" cy="4" r="1" fill="#ffdd00"/>
+</svg>
