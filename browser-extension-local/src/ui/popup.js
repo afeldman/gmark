@@ -323,6 +323,7 @@ const app = {
 
   // Bootstrap-Methoden
   async startBootstrap() {
+    console.log("📱 Starting bootstrap...");
     const progressDiv = document.getElementById("bootstrap-progress");
     const btn = document.getElementById("start-bootstrap-btn");
 
@@ -331,18 +332,26 @@ const app = {
     btn.disabled = true;
     btn.textContent = "⏳ Wird ausgeführt...";
 
-    // Höre auf Progress-Updates
-    chrome.runtime.onMessage.addListener((message) => {
+    // Höre auf Progress-Updates BEVOR wir sendMessage aufrufen
+    console.log("📱 Registering message listener for BOOTSTRAP_PROGRESS...");
+    const messageHandler = (message) => {
+      console.log("📱 Received message:", message.type);
       if (message.type === "BOOTSTRAP_PROGRESS") {
+        console.log("📱 Updating bootstrap progress...", message.progress);
         this.updateBootstrapProgress(message.progress);
       }
-    });
+    };
+
+    chrome.runtime.onMessage.addListener(messageHandler);
 
     try {
       // Starte Bootstrap
+      console.log("📱 Sending START_BOOTSTRAP message...");
       const result = await chrome.runtime.sendMessage({
         type: "START_BOOTSTRAP",
       });
+
+      console.log("📱 Bootstrap response:", result);
 
       if (result.success) {
         document.getElementById("progress-text").textContent =
@@ -350,6 +359,7 @@ const app = {
 
         // Warte 2 Sekunden dann zeige Main View
         setTimeout(() => {
+          chrome.runtime.onMessage.removeListener(messageHandler);
           this.init();
         }, 2000);
       } else if (result.configured === false) {
@@ -359,6 +369,7 @@ const app = {
         this.showError(result.error || "Bootstrap fehlgeschlagen");
       }
     } catch (error) {
+      console.error("📱 Bootstrap error:", error);
       this.showError(error.message);
     } finally {
       btn.disabled = false;
@@ -469,14 +480,25 @@ const app = {
   },
 
   updateBootstrapProgress(progress) {
+    console.log("📱 Updating progress display:", progress);
     const percentage = progress.percentage || 0;
     document.getElementById("progress-fill").style.width = percentage + "%";
-    document.getElementById(
-      "progress-text"
-    ).textContent = `${progress.processed}/${progress.total} Bookmarks verarbeitet (${percentage}%)`;
-    document.getElementById("stat-success").textContent = progress.success;
-    document.getElementById("stat-failed").textContent = progress.failed;
-    document.getElementById("stat-skipped").textContent = progress.skipped;
+    
+    const progressText = document.getElementById("progress-text");
+    if (progressText) {
+      progressText.textContent = `${progress.processed}/${progress.total} Bookmarks verarbeitet (${percentage}%)`;
+    }
+    
+    const statSuccess = document.getElementById("stat-success");
+    if (statSuccess) statSuccess.textContent = progress.success || 0;
+    
+    const statFailed = document.getElementById("stat-failed");
+    if (statFailed) statFailed.textContent = progress.failed || 0;
+    
+    const statSkipped = document.getElementById("stat-skipped");
+    if (statSkipped) statSkipped.textContent = progress.notResponding || progress.skipped || 0;
+    
+    console.log("📱 Progress display updated");
   },
 };
 
