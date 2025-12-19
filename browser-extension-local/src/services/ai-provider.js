@@ -21,7 +21,16 @@ export class AIProviderManager {
    * Setze AI Provider
    */
   static async setActiveProvider(provider) {
-    const validProviders = ["prompt-api", "ollama", "lm-studio"];
+    const validProviders = [
+      "prompt-api",
+      "ollama",
+      "lm-studio",
+      "openai",
+      "deepseek",
+      "gemini",
+      "mistral",
+      "llama",
+    ];
 
     if (!validProviders.includes(provider)) {
       console.error(`❌ Ungültiger Provider: ${provider}`);
@@ -38,9 +47,21 @@ export class AIProviderManager {
    */
   static async getProviderConfig(provider) {
     const provider_key = `${provider}_config`;
-    const config = await StorageManager.getSetting(provider_key);
+    let config = await StorageManager.getSetting(provider_key);
 
-    return config || this.getDefaultConfig(provider);
+    config = config || this.getDefaultConfig(provider);
+
+    // Lade API Keys für Cloud-Provider aus Storage
+    if (
+      ["openai", "deepseek", "gemini", "mistral", "llama"].includes(provider)
+    ) {
+      const apiKey = await StorageManager.getSetting(`${provider}_apiKey`);
+      if (apiKey) {
+        config.apiKey = apiKey;
+      }
+    }
+
+    return config;
   }
 
   /**
@@ -74,6 +95,41 @@ export class AIProviderManager {
         model: "default",
         description: "LM Studio Server",
       },
+      openai: {
+        type: "openai",
+        apiKey: "",
+        baseURL: "https://api.openai.com/v1",
+        model: "gpt-3.5-turbo",
+        description: "OpenAI GPT Models",
+      },
+      deepseek: {
+        type: "deepseek",
+        apiKey: "",
+        baseURL: "https://api.deepseek.com/beta",
+        model: "deepseek-chat",
+        description: "DeepSeek (OpenAI-kompatibel)",
+      },
+      gemini: {
+        type: "gemini",
+        apiKey: "",
+        baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+        model: "gemini-2.0-flash",
+        description: "Google Gemini API (Cloud)",
+      },
+      mistral: {
+        type: "mistral",
+        apiKey: "",
+        baseURL: "https://api.mistral.ai/v1",
+        model: "mistral-small-latest",
+        description: "Mistral AI API",
+      },
+      llama: {
+        type: "llama",
+        apiKey: "",
+        baseURL: "https://api.together.xyz/v1",
+        model: "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+        description: "Llama via Together AI",
+      },
     };
 
     return defaults[provider] || {};
@@ -92,6 +148,16 @@ export class AIProviderManager {
         return await this.checkOllamaAvailability();
       case "lm-studio":
         return await this.checkLMStudioAvailability();
+      case "openai":
+        return await this.checkOpenAIAvailability();
+      case "deepseek":
+        return await this.checkDeepSeekAvailability();
+      case "gemini":
+        return await this.checkGeminiAvailability();
+      case "mistral":
+        return await this.checkMistralAvailability();
+      case "llama":
+        return await this.checkLlamaAvailability();
       default:
         return { available: false, error: "Unbekannter Provider" };
     }
@@ -199,6 +265,16 @@ export class AIProviderManager {
         return await this.classifyWithOllama(data);
       case "lm-studio":
         return await this.classifyWithLMStudio(data);
+      case "openai":
+        return await this.classifyWithOpenAICompatible(data, "openai");
+      case "deepseek":
+        return await this.classifyWithOpenAICompatible(data, "deepseek");
+      case "gemini":
+        return await this.classifyWithOpenAICompatible(data, "gemini");
+      case "mistral":
+        return await this.classifyWithOpenAICompatible(data, "mistral");
+      case "llama":
+        return await this.classifyWithOpenAICompatible(data, "llama");
       case "prompt-api":
       default:
         return await this.classifyWithPromptAPI(data);
@@ -295,6 +371,227 @@ Antworte nur mit diesem JSON-Format (keine anderen Zeichen):
       throw new Error("Ungültige Antwort von LM Studio");
     } catch (error) {
       console.error("❌ LM Studio-Klassifikation fehlgeschlagen:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Prüfe OpenAI Verfügbarkeit
+   */
+  static async checkOpenAIAvailability() {
+    try {
+      const config = await this.getProviderConfig("openai");
+      if (!config.apiKey) {
+        return {
+          available: false,
+          error: "API Key nicht konfiguriert",
+          help: "Setze deinen OpenAI API Key in den Einstellungen",
+        };
+      }
+
+      const response = await fetch(`${config.baseURL}/models`, {
+        headers: { Authorization: `Bearer ${config.apiKey}` },
+      });
+
+      if (!response.ok) {
+        throw new Error("OpenAI API antwortet nicht");
+      }
+
+      console.log("  ✅ OpenAI verfügbar");
+      return { available: true };
+    } catch (error) {
+      console.log("  ❌ OpenAI nicht verfügbar");
+      return {
+        available: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Prüfe DeepSeek Verfügbarkeit
+   */
+  static async checkDeepSeekAvailability() {
+    try {
+      const config = await this.getProviderConfig("deepseek");
+      if (!config.apiKey) {
+        return {
+          available: false,
+          error: "API Key nicht konfiguriert",
+          help: "Setze deinen DeepSeek API Key in den Einstellungen",
+        };
+      }
+
+      const response = await fetch(`${config.baseURL}/models`, {
+        headers: { Authorization: `Bearer ${config.apiKey}` },
+      });
+
+      if (!response.ok) {
+        throw new Error("DeepSeek API antwortet nicht");
+      }
+
+      console.log("  ✅ DeepSeek verfügbar");
+      return { available: true };
+    } catch (error) {
+      console.log("  ❌ DeepSeek nicht verfügbar");
+      return {
+        available: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Prüfe Gemini Cloud Verfügbarkeit
+   */
+  static async checkGeminiAvailability() {
+    try {
+      const config = await this.getProviderConfig("gemini");
+      if (!config.apiKey) {
+        return {
+          available: false,
+          error: "API Key nicht konfiguriert",
+          help: "Setze deinen Google Gemini API Key in den Einstellungen",
+        };
+      }
+
+      console.log("  ✅ Gemini verfügbar");
+      return { available: true };
+    } catch (error) {
+      console.log("  ❌ Gemini nicht verfügbar");
+      return {
+        available: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Prüfe Mistral Verfügbarkeit
+   */
+  static async checkMistralAvailability() {
+    try {
+      const config = await this.getProviderConfig("mistral");
+      if (!config.apiKey) {
+        return {
+          available: false,
+          error: "API Key nicht konfiguriert",
+          help: "Setze deinen Mistral API Key in den Einstellungen",
+        };
+      }
+
+      const response = await fetch(`${config.baseURL}/models`, {
+        headers: { Authorization: `Bearer ${config.apiKey}` },
+      });
+
+      if (!response.ok) {
+        throw new Error("Mistral API antwortet nicht");
+      }
+
+      console.log("  ✅ Mistral verfügbar");
+      return { available: true };
+    } catch (error) {
+      console.log("  ❌ Mistral nicht verfügbar");
+      return {
+        available: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Prüfe Llama (via Together AI) Verfügbarkeit
+   */
+  static async checkLlamaAvailability() {
+    try {
+      const config = await this.getProviderConfig("llama");
+      if (!config.apiKey) {
+        return {
+          available: false,
+          error: "API Key nicht konfiguriert",
+          help: "Setze deinen Together AI API Key in den Einstellungen",
+        };
+      }
+
+      const response = await fetch(`${config.baseURL}/models`, {
+        headers: { Authorization: `Bearer ${config.apiKey}` },
+      });
+
+      if (!response.ok) {
+        throw new Error("Together AI API antwortet nicht");
+      }
+
+      console.log("  ✅ Llama verfügbar");
+      return { available: true };
+    } catch (error) {
+      console.log("  ❌ Llama nicht verfügbar");
+      return {
+        available: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Klassifiziere mit OpenAI-kompatiblen Providern
+   * (OpenAI, DeepSeek, Gemini, Mistral, Llama)
+   */
+  static async classifyWithOpenAICompatible(data, provider) {
+    try {
+      const config = await this.getProviderConfig(provider);
+
+      if (!config.apiKey) {
+        throw new Error(`${provider} API Key ist nicht gesetzt`);
+      }
+
+      const prompt = `Klassifiziere folgende URL und gib NUR ein JSON-Object zurück:
+Title: ${data.title}
+URL: ${data.url}
+Description: ${data.description}
+
+Antworte nur mit diesem JSON-Format (keine anderen Zeichen):
+{
+  "category": "Development|Social|News|Shopping|Education|Entertainment|Documentation|Tools|Other",
+  "confidence": 0.9,
+  "tags": ["tag1", "tag2"],
+  "summary": "Kurze Zusammenfassung"
+}`;
+
+      const response = await fetch(`${config.baseURL}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          max_tokens: 300,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || "API Fehler");
+      }
+
+      const result = await response.json();
+      const content = result.choices[0].message.content;
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        console.log(`  ✅ ${provider} Klassifikation erfolgreich`);
+        return parsed;
+      }
+
+      throw new Error("Ungültige JSON in Antwort");
+    } catch (error) {
+      console.error(
+        `❌ ${provider}-Klassifikation fehlgeschlagen:`,
+        error.message
+      );
       return null;
     }
   }

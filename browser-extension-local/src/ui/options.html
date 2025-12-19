@@ -214,9 +214,18 @@
       <div class="setting-group">
         <label for="aiProvider">🤖 AI Provider</label>
         <select id="aiProvider">
-          <option value="prompt-api">Chrome Prompt API (Gemini Nano)</option>
-          <option value="ollama">🦙 Ollama (lokal)</option>
-          <option value="lm-studio">🎮 LM Studio (lokal)</option>
+          <optgroup label="🔒 Lokal & Privat">
+            <option value="prompt-api">Chrome Prompt API (Gemini Nano)</option>
+            <option value="ollama">🦙 Ollama (lokal)</option>
+            <option value="lm-studio">🎮 LM Studio (lokal)</option>
+          </optgroup>
+          <optgroup label="☁️ Cloud APIs">
+            <option value="openai">🔴 OpenAI (GPT-3.5/GPT-4)</option>
+            <option value="deepseek">🟢 DeepSeek</option>
+            <option value="gemini">🟠 Google Gemini</option>
+            <option value="mistral">💜 Mistral AI</option>
+            <option value="llama">🦙 Llama (Together AI)</option>
+          </optgroup>
         </select>
 
         <div class="provider-info" id="providerInfo"></div>
@@ -282,6 +291,125 @@
           💡 Download:
           <a href="https://lmstudio.ai" target="_blank">lmstudio.ai</a> -
           Aktiviere "Local Server" in Settings
+        </p>
+      </div>
+
+      <!-- OpenAI Configuration -->
+      <div
+        id="openaiConfig"
+        class="setting-group provider-section"
+        style="display: none"
+      >
+        <h3>🔴 OpenAI Konfiguration</h3>
+        <label for="openaiApiKey">API Key</label>
+        <input type="password" id="openaiApiKey" placeholder="sk-..." />
+        <label for="openaiModel">Modell</label>
+        <select id="openaiModel">
+          <option value="gpt-3.5-turbo">
+            GPT-3.5 Turbo (schnell, günstig)
+          </option>
+          <option value="gpt-4">GPT-4 (leistungsstark)</option>
+          <option value="gpt-4-turbo-preview">
+            GPT-4 Turbo (schneller GPT-4)
+          </option>
+        </select>
+        <p class="provider-info" style="margin-top: 12px">
+          💡 API Key von
+          <a href="https://platform.openai.com/api-keys" target="_blank"
+            >platform.openai.com</a
+          >
+          - ⚠️ Kosten pro Token!
+        </p>
+      </div>
+
+      <!-- DeepSeek Configuration -->
+      <div
+        id="deepseekConfig"
+        class="setting-group provider-section"
+        style="display: none"
+      >
+        <h3>🟢 DeepSeek Konfiguration</h3>
+        <label for="deepseekApiKey">API Key</label>
+        <input type="password" id="deepseekApiKey" placeholder="sk-..." />
+        <label for="deepseekModel">Modell</label>
+        <select id="deepseekModel">
+          <option value="deepseek-chat">DeepSeek Chat</option>
+          <option value="deepseek-coder">DeepSeek Coder</option>
+        </select>
+        <p class="provider-info" style="margin-top: 12px">
+          💡 API Key von
+          <a href="https://platform.deepseek.com" target="_blank"
+            >platform.deepseek.com</a
+          >
+          - Kosteneffizient!
+        </p>
+      </div>
+
+      <!-- Gemini Configuration -->
+      <div
+        id="geminiConfig"
+        class="setting-group provider-section"
+        style="display: none"
+      >
+        <h3>🟠 Google Gemini Konfiguration</h3>
+        <label for="geminiApiKey">API Key</label>
+        <input type="password" id="geminiApiKey" placeholder="AIzaSy..." />
+        <p class="provider-info" style="margin-top: 12px">
+          💡 API Key von
+          <a href="https://ai.google.dev" target="_blank">ai.google.dev</a> -
+          Kostenlos im kostenlosen Tier
+        </p>
+      </div>
+
+      <!-- Mistral Configuration -->
+      <div
+        id="mistralConfig"
+        class="setting-group provider-section"
+        style="display: none"
+      >
+        <h3>💜 Mistral AI Konfiguration</h3>
+        <label for="mistralApiKey">API Key</label>
+        <input type="password" id="mistralApiKey" placeholder="sk-..." />
+        <label for="mistralModel">Modell</label>
+        <select id="mistralModel">
+          <option value="mistral-small-latest">Mistral Small (schnell)</option>
+          <option value="mistral-medium-latest">Mistral Medium</option>
+          <option value="mistral-large-latest">
+            Mistral Large (leistungsstark)
+          </option>
+        </select>
+        <p class="provider-info" style="margin-top: 12px">
+          💡 API Key von
+          <a href="https://console.mistral.ai" target="_blank"
+            >console.mistral.ai</a
+          >
+        </p>
+      </div>
+
+      <!-- Llama Configuration -->
+      <div
+        id="llamaConfig"
+        class="setting-group provider-section"
+        style="display: none"
+      >
+        <h3>🦙 Llama (Together AI) Konfiguration</h3>
+        <label for="llamaApiKey">API Key</label>
+        <input type="password" id="llamaApiKey" placeholder="sk-..." />
+        <label for="llamaModel">Modell</label>
+        <select id="llamaModel">
+          <option value="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo">
+            Llama 3.1 70B (empfohlen)
+          </option>
+          <option value="meta-llama/Meta-Llama-3-70B-Instruct-Turbo">
+            Llama 3 70B
+          </option>
+          <option value="meta-llama/Meta-Llama-3-8B-Instruct-Turbo">
+            Llama 3 8B (schnell)
+          </option>
+        </select>
+        <p class="provider-info" style="margin-top: 12px">
+          💡 API Key von
+          <a href="https://www.together.ai" target="_blank">together.ai</a>
         </p>
       </div>
 

@@ -392,6 +392,48 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     return true;
   }
+
+  if (message.type === "saveAPIKey") {
+    logger.log("\n🔐 Speichere API Key für:", message.provider);
+    StorageManager.setSetting(`${message.provider}_apiKey`, message.apiKey)
+      .then(() => {
+        logger.log("  ✅ API Key gespeichert");
+        sendResponse({ success: true });
+      })
+      .catch((error) => {
+        logger.error("  ❌ Fehler beim Speichern des API Keys:", error);
+        sendResponse({ error: error.message });
+      });
+    return true;
+  }
+
+  if (message.type === "getAPIKey") {
+    logger.log("\n🔑 Lade API Key für:", message.provider);
+    StorageManager.getSetting(`${message.provider}_apiKey`)
+      .then((apiKey) => {
+        logger.log("  ✅ API Key geladen");
+        sendResponse({ apiKey: apiKey || null });
+      })
+      .catch((error) => {
+        logger.error("  ❌ Fehler beim Laden des API Keys:", error);
+        sendResponse({ apiKey: null, error: error.message });
+      });
+    return true;
+  }
+
+  if (message.type === "deleteAPIKey") {
+    logger.log("\n🗑️ Lösche API Key für:", message.provider);
+    StorageManager.deleteSetting(`${message.provider}_apiKey`)
+      .then(() => {
+        logger.log("  ✅ API Key gelöscht");
+        sendResponse({ success: true });
+      })
+      .catch((error) => {
+        logger.error("  ❌ Fehler beim Löschen des API Keys:", error);
+        sendResponse({ error: error.message });
+      });
+    return true;
+  }
 });
 
 // Chrome Bookmark-Events: leere Ordner global bereinigen

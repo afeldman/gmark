@@ -5,7 +5,65 @@
  * Erweitert die bestehenden Chrome API Types
  *
  * Diese Datei stellt Runtime-Funktionen für sichere Nutzung der Prompt API zur Verfügung
+ * sowie Utility-Funktionen für Cloud-basierte Provider (OpenAI, DeepSeek, etc.)
  */
+
+/**
+ * Validiere und speichere API Keys sicher
+ * @param {string} provider - Provider Name
+ * @param {string} apiKey - API Key
+ * @returns {Promise<boolean>}
+ */
+export async function validateAndStoreAPIKey(provider, apiKey) {
+  try {
+    if (!apiKey || apiKey.trim().length === 0) {
+      console.error(`❌ ${provider} API Key ist leer`);
+      return false;
+    }
+
+    // Speichere im Chrome Storage (encrypted by browser)
+    const storageKey = `${provider}_apiKey`;
+    await chrome.storage.sync.set({ [storageKey]: apiKey });
+    console.log(`✅ ${provider} API Key gespeichert`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Fehler beim Speichern des ${provider} API Keys:`, error);
+    return false;
+  }
+}
+
+/**
+ * Hole API Key aus Chrome Storage
+ * @param {string} provider - Provider Name
+ * @returns {Promise<string|null>}
+ */
+export async function getAPIKey(provider) {
+  try {
+    const storageKey = `${provider}_apiKey`;
+    const result = await chrome.storage.sync.get(storageKey);
+    return result[storageKey] || null;
+  } catch (error) {
+    console.error(`❌ Fehler beim Lesen des ${provider} API Keys:`, error);
+    return null;
+  }
+}
+
+/**
+ * Lösche API Key
+ * @param {string} provider - Provider Name
+ * @returns {Promise<boolean>}
+ */
+export async function deleteAPIKey(provider) {
+  try {
+    const storageKey = `${provider}_apiKey`;
+    await chrome.storage.sync.remove(storageKey);
+    console.log(`✅ ${provider} API Key gelöscht`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Fehler beim Löschen des ${provider} API Keys:`, error);
+    return false;
+  }
+}
 
 /**
  * Check if Prompt API is available
@@ -191,4 +249,7 @@ export default {
   classifyWithAI,
   safeDestroySession,
   summarizeWithAI,
+  validateAndStoreAPIKey,
+  getAPIKey,
+  deleteAPIKey,
 };

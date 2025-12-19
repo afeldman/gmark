@@ -19,6 +19,26 @@ const lmStudioConfig = document.getElementById("lmStudioConfig");
 const lmStudioUrl = document.getElementById("lmStudioUrl");
 const lmStudioModel = document.getElementById("lmStudioModel");
 
+// Cloud Provider Elements
+const openaiConfig = document.getElementById("openaiConfig");
+const openaiApiKey = document.getElementById("openaiApiKey");
+const openaiModel = document.getElementById("openaiModel");
+
+const deepseekConfig = document.getElementById("deepseekConfig");
+const deepseekApiKey = document.getElementById("deepseekApiKey");
+const deepseekModel = document.getElementById("deepseekModel");
+
+const geminiConfig = document.getElementById("geminiConfig");
+const geminiApiKey = document.getElementById("geminiApiKey");
+
+const mistralConfig = document.getElementById("mistralConfig");
+const mistralApiKey = document.getElementById("mistralApiKey");
+const mistralModel = document.getElementById("mistralModel");
+
+const llamaConfig = document.getElementById("llamaConfig");
+const llamaApiKey = document.getElementById("llamaApiKey");
+const llamaModel = document.getElementById("llamaModel");
+
 const autoClassify = document.getElementById("autoClassify");
 const autoDetectDuplicates = document.getElementById("autoDetectDuplicates");
 
@@ -33,6 +53,15 @@ const providerTexts = {
     "🦙 Ollama - Open-source LLM Framework. Lade dein favorites Modell herunter und führe es lokal aus.",
   "lm-studio":
     "🎮 LM Studio - Benutzerfreundliche Desktop-App zum Download und Ausführen von LLMs mit GUI.",
+  openai:
+    "🔴 OpenAI - GPT-3.5 Turbo und GPT-4 Modelle. ⚠️ API Keys erforderlich, Kosten pro Token.",
+  deepseek:
+    "🟢 DeepSeek - Leistungsstarke und kosteneffiziente Alternative zu OpenAI.",
+  gemini:
+    "🟠 Google Gemini - Hochmodernes Modell von Google mit kostenlosem Tier.",
+  mistral: "💜 Mistral AI - Schnelle und effiziente europäische Alternative.",
+  llama:
+    "🦙 Llama via Together AI - Meta's Llama Modelle über Together AI gehostet.",
 };
 
 // Initialize on page load
@@ -97,6 +126,75 @@ lmStudioModel.addEventListener("input", () => {
     saveProviderField("lm-studio", "model", lmStudioModel.value)
   );
 });
+
+// Cloud Provider API Key handlers
+if (openaiApiKey) {
+  openaiApiKey.addEventListener("input", () => {
+    debounceSave(() => saveAPIKey("openai", openaiApiKey.value));
+  });
+  openaiModel?.addEventListener("change", () => {
+    debounceSave(() => saveProviderField("openai", "model", openaiModel.value));
+  });
+}
+
+if (deepseekApiKey) {
+  deepseekApiKey.addEventListener("input", () => {
+    debounceSave(() => saveAPIKey("deepseek", deepseekApiKey.value));
+  });
+  deepseekModel?.addEventListener("change", () => {
+    debounceSave(() =>
+      saveProviderField("deepseek", "model", deepseekModel.value)
+    );
+  });
+}
+
+if (geminiApiKey) {
+  geminiApiKey.addEventListener("input", () => {
+    debounceSave(() => saveAPIKey("gemini", geminiApiKey.value));
+  });
+}
+
+if (mistralApiKey) {
+  mistralApiKey.addEventListener("input", () => {
+    debounceSave(() => saveAPIKey("mistral", mistralApiKey.value));
+  });
+  mistralModel?.addEventListener("change", () => {
+    debounceSave(() =>
+      saveProviderField("mistral", "model", mistralModel.value)
+    );
+  });
+}
+
+if (llamaApiKey) {
+  llamaApiKey.addEventListener("input", () => {
+    debounceSave(() => saveAPIKey("llama", llamaApiKey.value));
+  });
+  llamaModel?.addEventListener("change", () => {
+    debounceSave(() => saveProviderField("llama", "model", llamaModel.value));
+  });
+}
+
+/**
+ * Save API Key securely
+ */
+async function saveAPIKey(provider, apiKey) {
+  console.log(`💾 Speichere ${provider} API Key...`);
+
+  try {
+    await chrome.runtime.sendMessage({
+      type: "saveAPIKey",
+      provider: provider,
+      apiKey: apiKey,
+    });
+
+    console.log("✅ API Key gespeichert");
+    showStatus("success", "✅ API Key gespeichert", "saveStatus");
+    setTimeout(() => clearStatus("saveStatus"), 2000);
+  } catch (error) {
+    console.error("❌ Fehler beim Speichern des API Keys:", error);
+    showStatus("error", "❌ Fehler beim Speichern", "saveStatus");
+  }
+}
 
 /**
  * Save individual provider field
@@ -192,9 +290,40 @@ async function loadProviderSettings(provider) {
     } else if (provider === "lm-studio") {
       lmStudioUrl.value = config.url || "http://localhost:1234";
       lmStudioModel.value = config.model || "default";
+    } else if (provider === "openai") {
+      openaiApiKey.value = (await getStoredAPIKey("openai")) || "";
+      openaiModel.value = config.model || "gpt-3.5-turbo";
+    } else if (provider === "deepseek") {
+      deepseekApiKey.value = (await getStoredAPIKey("deepseek")) || "";
+      deepseekModel.value = config.model || "deepseek-chat";
+    } else if (provider === "gemini") {
+      geminiApiKey.value = (await getStoredAPIKey("gemini")) || "";
+    } else if (provider === "mistral") {
+      mistralApiKey.value = (await getStoredAPIKey("mistral")) || "";
+      mistralModel.value = config.model || "mistral-small-latest";
+    } else if (provider === "llama") {
+      llamaApiKey.value = (await getStoredAPIKey("llama")) || "";
+      llamaModel.value =
+        config.model || "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo";
     }
   } catch (error) {
     console.error("Error loading provider settings:", error);
+  }
+}
+
+/**
+ * Get stored API Key
+ */
+async function getStoredAPIKey(provider) {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "getAPIKey",
+      provider: provider,
+    });
+    return response?.apiKey || null;
+  } catch (error) {
+    console.error("Error getting API key:", error);
+    return null;
   }
 }
 
@@ -207,12 +336,22 @@ async function handleProviderChange() {
   // Show/hide provider-specific configs
   ollamaConfig.style.display = provider === "ollama" ? "block" : "none";
   lmStudioConfig.style.display = provider === "lm-studio" ? "block" : "none";
+  openaiConfig.style.display = provider === "openai" ? "block" : "none";
+  deepseekConfig.style.display = provider === "deepseek" ? "block" : "none";
+  geminiConfig.style.display = provider === "gemini" ? "block" : "none";
+  mistralConfig.style.display = provider === "mistral" ? "block" : "none";
+  llamaConfig.style.display = provider === "llama" ? "block" : "none";
 
   // Update provider info
   providerInfo.textContent = providerTexts[provider] || "";
 
   // Clear previous status
   clearStatus();
+
+  // Load API Keys für Cloud-Provider
+  if (["openai", "deepseek", "gemini", "mistral", "llama"].includes(provider)) {
+    await loadProviderSettings(provider);
+  }
 
   // Auto-Save Provider-Auswahl (nur wenn nicht initial load)
   if (!isInitialLoad) {
