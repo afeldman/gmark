@@ -654,4 +654,96 @@ Antworte nur mit diesem JSON-Format (keine anderen Zeichen):
   }
 }
 
+/**
+ * AI Singleton - Verwaltet die aktuell konfigurierte KI global
+ */
+class AISingleton {
+  constructor() {
+    this.currentProvider = null;
+    this.currentConfig = null;
+    this.initialized = false;
+  }
+
+  async init() {
+    try {
+      const provider = await AIProviderManager.getActiveProvider();
+      const config = await AIProviderManager.getProviderConfig(provider);
+      this.currentProvider = provider;
+      this.currentConfig = config;
+      this.initialized = true;
+      console.log(`🎯 AI Singleton initialisiert: ${provider}`);
+      return true;
+    } catch (error) {
+      console.error("❌ Fehler beim Initialisieren des AI Singleton:", error);
+      return false;
+    }
+  }
+
+  async switchProvider(provider) {
+    try {
+      const validProviders = [
+        "prompt-api",
+        "ollama",
+        "lm-studio",
+        "openai",
+        "deepseek",
+        "gemini",
+        "mistral",
+        "llama",
+      ];
+
+      if (!validProviders.includes(provider)) {
+        throw new Error(`Ungültiger Provider: ${provider}`);
+      }
+
+      await AIProviderManager.setActiveProvider(provider);
+      const config = await AIProviderManager.getProviderConfig(provider);
+      this.currentProvider = provider;
+      this.currentConfig = config;
+      console.log(`🎯 AI Singleton gewechselt zu: ${provider}`);
+      return true;
+    } catch (error) {
+      console.error("❌ Fehler beim Wechsel des Providers:", error);
+      return false;
+    }
+  }
+
+  getCurrentProvider() {
+    return this.currentProvider;
+  }
+
+  getCurrentConfig() {
+    return this.currentConfig;
+  }
+
+  getCurrentInfo() {
+    return {
+      provider: this.currentProvider,
+      config: this.currentConfig,
+      initialized: this.initialized,
+    };
+  }
+
+  async refreshConfig() {
+    if (!this.currentProvider) {
+      return false;
+    }
+
+    try {
+      const config = await AIProviderManager.getProviderConfig(
+        this.currentProvider
+      );
+      this.currentConfig = config;
+      console.log(`🔄 AI Singleton Config aktualisiert`);
+      return true;
+    } catch (error) {
+      console.error("❌ Fehler beim Aktualisieren der Config:", error);
+      return false;
+    }
+  }
+}
+
+const aiSingleton = new AISingleton();
+
 export default AIProviderManager;
+export { aiSingleton, AISingleton };

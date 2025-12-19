@@ -3,7 +3,12 @@
  * Handles provider selection, configuration, and testing
  */
 
-// DOM Elements
+// DOM Elements - Prompt API
+const promptApiToggle = document.getElementById("promptApiToggle");
+const promptApiStatus = document.getElementById("promptApiStatus");
+const promptApiSetupBtn = document.getElementById("promptApiSetupBtn");
+
+// DOM Elements - Provider Selection
 const aiProviderSelect = document.getElementById("aiProvider");
 const checkProviderBtn = document.getElementById("checkProviderBtn");
 const testProviderBtn = document.getElementById("testProviderBtn");
@@ -68,6 +73,8 @@ const providerTexts = {
 document.addEventListener("DOMContentLoaded", loadSettings);
 
 // Event Listeners
+promptApiToggle.addEventListener("change", handlePromptApiToggle);
+promptApiSetupBtn.addEventListener("click", showPromptApiSetup);
 aiProviderSelect.addEventListener("change", handleProviderChange);
 checkProviderBtn.addEventListener("click", checkProviderAvailability);
 testProviderBtn.addEventListener("click", testProvider);
@@ -236,17 +243,25 @@ let isInitialLoad = true;
  */
 async function loadSettings() {
   try {
-    // Get storage manager from background
-    const response = await chrome.runtime.sendMessage({
+    // Load Prompt API setting
+    const promptApiResponse = await chrome.runtime.sendMessage({
       type: "getSetting",
       key: "aiProvider",
     });
 
-    const provider = response?.value || "prompt-api";
-    aiProviderSelect.value = provider;
+    const currentProvider = promptApiResponse?.value || "prompt-api";
+    const usePromptApi = currentProvider === "prompt-api";
+
+    // Set Prompt API toggle
+    promptApiToggle.checked = usePromptApi;
+
+    // If not using Prompt API, set the dropdown to the current provider
+    if (!usePromptApi) {
+      aiProviderSelect.value = currentProvider;
+    }
 
     // Load provider-specific settings
-    await loadProviderSettings(provider);
+    await loadProviderSettings(currentProvider);
 
     // Load other settings
     const autoClassifyResponse = await chrome.runtime.sendMessage({
@@ -261,6 +276,8 @@ async function loadSettings() {
     });
     autoDetectDuplicates.checked = autoDetectResponse?.value !== false;
 
+    // Update UI based on Prompt API toggle
+    updatePromptApiUI();
     handleProviderChange();
 
     // Enable auto-save after initial load
@@ -640,4 +657,125 @@ function clearStatus(target = "providerStatus") {
     modelsList.innerHTML = "";
     modelsList.style.display = "none";
   }
+}
+
+/**
+ * Handle Prompt API Toggle
+ */
+async function handlePromptApiToggle(e) {
+  const enabled = e.target.checked;
+
+  try {
+    if (enabled) {
+      // Prüfe ob Prompt API verfügbar ist
+      const availability = await chrome.runtime.sendMessage({
+        type: "checkProviderAvailability",
+        provider: "prompt-api",
+      });
+
+      if (!availability.available) {
+        // Prompt API nicht verfügbar - schalte Toggle aus und zeige Setup
+        promptApiToggle.checked = false;
+        showPromptApiSetup();
+        showStatus(
+          "error",
+          "❌ Prompt API nicht verfügbar. Bitte Setup-Anleitung folgen.",
+          "promptApiStatus"
+        );
+        return;
+      }
+
+      // Prompt API verfügbar - setze als aktiven Provider
+      await chrome.runtime.sendMessage({
+        type: "setSetting",
+        key: "aiProvider",
+        value: "prompt-api",
+      });
+
+      showStatus("success", "✅ Prompt API aktiviert", "promptApiStatus");
+      aiProviderSelect.style.display = "none";
+      setTimeout(() => {
+        clearStatus("promptApiStatus");
+      }, 2000);
+    } else {
+      // Deaktiviere Prompt API, setze zu erstem anderen Provider
+      const firstProvider = aiProviderSelect.value || "ollama";
+      await chrome.runtime.sendMessage({
+        type: "setSetting",
+        key: "aiProvider",
+        value: firstProvider,
+      });
+
+      showStatus("info", "ℹ️ Prompt API deaktiviert", "promptApiStatus");
+      aiProviderSelect.style.display = "block";
+      setTimeout(() => {
+        clearStatus("promptApiStatus");
+      }, 2000);
+    }
+
+    updatePromptApiUI();
+    handleProviderChange();
+  } catch (error) {
+    console.error("Fehler beim Ändern des Prompt API Toggle:", error);
+    promptApiToggle.checked = !enabled;
+    showStatus("error", "❌ Fehler: " + error.message, "promptApiStatus");
+  }
+}
+
+/**
+ * Update Prompt API UI basierend auf Toggle-Status
+ */
+function updatePromptApiUI() {
+  const usePromptApi = promptApiToggle.checked;
+
+  // Zeige/verstecke Provider-Dropdown
+  aiProviderSelect.parentElement.style.display = usePromptApi
+    ? "none"
+    : "block";
+  document.getElementById("checkProviderBtn").style.display = usePromptApi
+    ? "none"
+    : "inline-block";
+  document.getElementById("testProviderBtn").style.display = usePromptApi
+    ? "none"
+    : "inline-block";
+  providerInfo.style.display = usePromptApi ? "none" : "block";
+  document.getElementById("providerStatus").style.display = usePromptApi
+    ? "none"
+    : "block";
+
+  // Zeige/verstecke Provider-Config-Sektionen
+  const isPromptApi = usePromptApi;
+  ollamaConfig.style.display = isPromptApi ? "none" : "block";
+  lmStudioConfig.style.display = isPromptApi ? "none" : "block";
+  openaiConfig.style.display = isPromptApi ? "none" : "block";
+  deepseekConfig.style.display = isPromptApi ? "none" : "block";
+  geminiConfig.style.display = isPromptApi ? "none" : "block";
+  mistralConfig.style.display = isPromptApi ? "none" : "block";
+  llamaConfig.style.display = isPromptApi ? "none" : "block";
+}
+
+/**
+ * Zeige Prompt API Setup-Anleitung
+ */
+function showPromptApiSetup() {
+  const setupText = `
+🎯 Chrome Prompt API (Gemini Nano) Setup
+
+Die Prompt API ist nicht verfügbar. Folge diesen Schritten zum Aktivieren:
+
+1. Öffne Chrome mit folgendem Flag:
+   chrome://flags/#prompt-api-for-gemini-nano
+
+2. Setze den Flag auf "Enabled"
+
+3. Starte den Browser neu
+
+4. Öffne diese Seite erneut und versuche die Prompt API zu aktivieren
+
+5. Beim ersten Mal wird Gemini Nano automatisch heruntergeladen
+
+Weitere Informationen:
+https://docs.google.com/document/d/1gS4uKSxl-cMfBp9nFl5EXmC1hLCVaFVqY7sOE7i9PpA/edit`;
+
+  alert(setupText);
 }

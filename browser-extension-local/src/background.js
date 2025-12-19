@@ -12,7 +12,7 @@
 import StorageManager from "./utils/storage.js";
 import BootstrapService from "./services/bootstrap.js";
 import StorageOptimizer from "./utils/storage-optimizer.js";
-import AIProviderManager from "./services/ai-provider.js";
+import AIProviderManager, { aiSingleton } from "./services/ai-provider.js";
 import ClassificationService from "./services/classification.js";
 import logger from "./utils/logger.js";
 import {
@@ -27,6 +27,11 @@ chrome.runtime.onInstalled.addListener(async () => {
   logger.log("\n" + "=".repeat(60));
   logger.log("🚀 GMARK Local Extension installiert!");
   logger.log("=".repeat(60) + "\n");
+
+  // Initialisiere AI Singleton
+  logger.log("🎯 Initialisiere AI Singleton...");
+  await aiSingleton.init();
+  logger.log(`  ✅ AI Singleton bereit: ${aiSingleton.getCurrentProvider()}\n`);
 
   // Erstelle Kontextmenü
   logger.log("📋 Erstelle Kontextmenüs...");
@@ -430,6 +435,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
       .catch((error) => {
         logger.error("  ❌ Fehler beim Löschen des API Keys:", error);
+        sendResponse({ error: error.message });
+      });
+    return true;
+  }
+
+  if (message.type === "getAISingletonInfo") {
+    logger.log("\n🎯 Hole AI Singleton Info");
+    const info = aiSingleton.getCurrentInfo();
+    sendResponse(info);
+    return true;
+  }
+
+  if (message.type === "switchProvider") {
+    logger.log("\n🎯 Wechsle zu Provider:", message.provider);
+    aiSingleton
+      .switchProvider(message.provider)
+      .then((success) => {
+        logger.log(`  ✅ Zu ${message.provider} gewechselt`);
+        sendResponse({ success });
+      })
+      .catch((error) => {
+        logger.error("  ❌ Fehler beim Wechsel:", error);
         sendResponse({ error: error.message });
       });
     return true;

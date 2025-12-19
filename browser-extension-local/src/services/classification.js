@@ -18,6 +18,7 @@ import {
 } from "../types/ai.js";
 import UsageManager from "../utils/usage.js";
 import logger from "../utils/logger.js";
+import { aiSingleton } from "./ai-provider.js";
 
 import { loadYAML } from "../utils/yaml-parser.js";
 
