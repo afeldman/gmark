@@ -1,13 +1,124 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>GMARK AI Worker</title>
-</head>
-<body>
-    <!-- Minimal HTML für AI-Calls im Tab-Context -->
-    <script>
-        console.log('🤖 AI Worker geladen und bereit');
+  </head>
+  <body>
+    <script type="module">
+      console.log("🤖 AI Worker geladen und bereit");
+
+      // Höre auf Messages vom Service Worker
+      chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        console.log("📨 AI Worker empfängt:", request.action);
+
+        (async () => {
+          try {
+            const ai = self.ai || globalThis.ai;
+
+            switch (request.action) {
+              case "checkPromptAPI": {
+                if (!ai?.languageModel) {
+                  sendResponse({
+                    success: true,
+                    result: {
+                      available: false,
+                      error: "AI object not found",
+                      aiExists: !!ai,
+                      languageModelExists: !!ai?.languageModel,
+                    },
+                  });
+                  return;
+                }
+
+                const status = await ai.languageModel.capabilities();
+                sendResponse({
+                  success: true,
+                  result: {
+                    available: status.available === "readily",
+                    status: status.available,
+                    defaultTemperature: status.defaultTemperature,
+                    defaultTopK: status.defaultTopK,
+                    maxTopK: status.maxTopK,
+                  },
+                });
+                break;
+              }
+
+              case "classify": {
+                if (!ai?.languageModel) {
+                  throw new Error("AI languageModel not available");
+                }
+
+                const { bookmark } = request;
+                const session = await ai.languageModel.create({
+                  temperature: 0.3,
+                  topK: 3,
+                });
+
+                const prompt = `Classify this bookmark into ONE category:
+Title: ${bookmark.title}
+URL: ${bookmark.url}
+Description: ${bookmark.description || "N/A"}
+
+Categories: Development, Design, Tools, Documentation, Learning, News, Social, Entertainment, Other
+
+Respond with ONLY the category name, nothing else.`;
+
+                const result = await session.prompt(prompt);
+                const category = result.trim();
+
+                sendResponse({
+                  success: true,
+                  result: {
+                    success: true,
+                    category: category,
+                    confidence: 0.9,
+                    method: "ai",
+                  },
+                });
+
+                session.destroy();
+                break;
+              }
+
+              case "summarize": {
+                if (!ai?.summarizer) {
+                  throw new Error("AI summarizer not available");
+                }
+
+                const { content, title } = request;
+                const session = await ai.summarizer.create();
+                const summary = await session.summarize(content);
+
+                sendResponse({
+                  success: true,
+                  result: summary,
+                });
+
+                session.destroy();
+                break;
+              }
+
+              default:
+                sendResponse({
+                  success: false,
+                  error: `Unknown action: ${request.action}`,
+                });
+            }
+          } catch (error) {
+            console.error("❌ AI Worker Fehler:", error);
+            sendResponse({
+              success: false,
+              error: error.message,
+            });
+          }
+        })();
+
+        return true; // Async response
+      });
+
+      console.log("✅ AI Worker bereit für Messages");
     </script>
-</body>
+  </body>
 </html>
