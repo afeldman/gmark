@@ -195,12 +195,27 @@ export class ClassificationService {
    */
   classifyByPatterns(title, description, url) {
     console.log("🔍 Pattern-based classification...");
+    console.log("  CATEGORIES keys:", Object.keys(CATEGORIES));
+    console.log(
+      "  CATEGORIES structure:",
+      JSON.stringify(CATEGORIES).substring(0, 500)
+    );
+
     const combined = `${title} ${description} ${url}`.toLowerCase();
     const scores = {};
 
     // Score jede Kategorie
     for (const [category, data] of Object.entries(CATEGORIES)) {
       let score = 0;
+
+      // Debug einzelne Kategorien
+      console.log(`  Category "${category}":`, {
+        hasData: !!data,
+        dataType: typeof data,
+        hasPatterns: data?.patterns,
+        patternsType: typeof data?.patterns,
+        isArray: Array.isArray(data?.patterns),
+      });
 
       // Safety check - wenn patterns nicht existiert, skip
       if (!data || !Array.isArray(data.patterns)) {

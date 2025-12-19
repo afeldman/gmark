@@ -11,9 +11,11 @@
 export function parseSimpleYAML(yamlText) {
   const lines = yamlText.split("\n");
   const result = {};
-  const stack = [{ obj: result, indent: -1, key: null }];
+  const stack = [{ obj: result, indent: -1, currentKey: null }];
 
-  for (let line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
     // Skip comments and empty lines
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
@@ -22,25 +24,25 @@ export function parseSimpleYAML(yamlText) {
     const indent = line.search(/\S/);
     const content = trimmed;
 
-    // Array item
+    // Array item (starts with -)
     if (content.startsWith("- ")) {
       const value = content.substring(2).trim();
 
-      // Find the parent that should contain this array
+      // Find correct parent object at this indent level
       while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
         stack.pop();
       }
 
       const parent = stack[stack.length - 1].obj;
-      const key = stack[stack.length - 1].key;
+      const key = stack[stack.length - 1].currentKey;
 
-      // If parent[key] doesn't exist, create array
+      // Create array if it doesn't exist
       if (key && !Array.isArray(parent[key])) {
         parent[key] = [];
       }
 
-      // Add to array
-      if (key) {
+      // Add value to array
+      if (key && Array.isArray(parent[key])) {
         parent[key].push(value);
       }
       continue;
@@ -50,9 +52,9 @@ export function parseSimpleYAML(yamlText) {
     const colonIndex = content.indexOf(":");
     if (colonIndex > -1) {
       const key = content.substring(0, colonIndex).trim();
-      let value = content.substring(colonIndex + 1).trim();
+      const value = content.substring(colonIndex + 1).trim();
 
-      // Pop stack to find correct parent
+      // Pop stack to find correct parent at this indent level
       while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
         stack.pop();
       }
@@ -60,28 +62,31 @@ export function parseSimpleYAML(yamlText) {
       const parent = stack[stack.length - 1].obj;
 
       if (value === "") {
-        // New nested object (key with no value means object)
+        // Empty value means nested object (or will be array if followed by -)
         parent[key] = {};
-        stack.push({ obj: parent[key], indent, key });
+        stack.push({ obj: parent[key], indent, currentKey: key });
       } else if (value.startsWith('"') && value.endsWith('"')) {
         // Double-quoted string
         parent[key] = value.slice(1, -1);
       } else if (value.startsWith("'") && value.endsWith("'")) {
         // Single-quoted string
         parent[key] = value.slice(1, -1);
-      } else if (!isNaN(value) && value !== "") {
-        // Number
-        parent[key] = parseFloat(value);
       } else if (value === "true") {
         // Boolean true
         parent[key] = true;
       } else if (value === "false") {
         // Boolean false
         parent[key] = false;
+      } else if (!isNaN(value) && value !== "") {
+        // Number
+        parent[key] = parseFloat(value);
       } else {
         // Plain string value
         parent[key] = value;
       }
+
+      // Update the key being tracked at this level
+      stack[stack.length - 1].currentKey = key;
     }
   }
 
