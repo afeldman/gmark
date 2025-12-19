@@ -11,8 +11,6 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
-    "@types/dom-chromium-ai": "^1.0.0",
-    "typescript": "^5.3.3",
     "web-ext": "^7.9.0"
   },
   "keywords": [

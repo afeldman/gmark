@@ -1,8 +1,8 @@
 /**
  * Chrome Prompt API Type Definitions
- *
- * Type-safe wrappers für Chrome Prompt API mit @types/dom-chromium-ai
- * Erweitert die bestehenden Chrome API Types
+ * 
+ * Reine Typ-Definitionen für die Chrome Prompt API
+ * Implementierung: siehe ai.js
  */
 
 declare global {
@@ -40,60 +40,24 @@ declare global {
   }
 }
 
-// Type-Guard Functions
-export function isPromptAPIAvailable(
-  ai: any
-): ai is { languageModel: LanguageModelAPI } {
-  return ai?.languageModel !== undefined;
-}
+// Type-Safe Helper Funktionen
+export function isPromptAPIAvailable(ai: any): ai is { languageModel: LanguageModelAPI };
 
-export async function checkCanCreateSession(
+export function checkCanCreateSession(
   statusCallback?: (status: "readily" | "after-download" | "no") => void
-): Promise<boolean> {
-  try {
-    const status = await window.ai?.languageModel?.canCreateTextSession?.();
-    if (statusCallback) statusCallback(status as any);
-    return status !== "no";
-  } catch {
-    return false;
-  }
-}
+): Promise<boolean>;
 
-export async function createLanguageModelSession(
+export function createLanguageModelSession(
   options?: LanguageModelCreateOptions
-): Promise<LanguageModelSession | null> {
-  try {
-    const session = await window.ai?.languageModel?.create?.(options);
-    return session || null;
-  } catch (error) {
-    console.error("Failed to create language model session:", error);
-    return null;
-  }
-}
+): Promise<LanguageModelSession | null>;
 
-export async function classifyWithAI(
+export function classifyWithAI(
   session: LanguageModelSession,
   prompt: string
-): Promise<LanguageModelResponse | null> {
-  try {
-    const response = await session.prompt(prompt);
-    return JSON.parse(response) as LanguageModelResponse;
-  } catch (error) {
-    console.error("Failed to classify with AI:", error);
-    return null;
-  }
-}
+): Promise<LanguageModelResponse | null>;
 
 export function safeDestroySession(
   session: LanguageModelSession | null | undefined
-): void {
-  try {
-    if (session && typeof session.destroy === "function") {
-      session.destroy();
-    }
-  } catch (error) {
-    console.error("Failed to destroy session:", error);
-  }
-}
+): void;
 
-export default {};
+export default {}
