@@ -483,21 +483,22 @@ const app = {
     console.log("📱 Updating progress display:", progress);
     const percentage = progress.percentage || 0;
     document.getElementById("progress-fill").style.width = percentage + "%";
-    
+
     const progressText = document.getElementById("progress-text");
     if (progressText) {
       progressText.textContent = `${progress.processed}/${progress.total} Bookmarks verarbeitet (${percentage}%)`;
     }
-    
+
     const statSuccess = document.getElementById("stat-success");
     if (statSuccess) statSuccess.textContent = progress.success || 0;
-    
+
     const statFailed = document.getElementById("stat-failed");
     if (statFailed) statFailed.textContent = progress.failed || 0;
-    
+
     const statSkipped = document.getElementById("stat-skipped");
-    if (statSkipped) statSkipped.textContent = progress.notResponding || progress.skipped || 0;
-    
+    if (statSkipped)
+      statSkipped.textContent = progress.notResponding || progress.skipped || 0;
+
     console.log("📱 Progress display updated");
   },
 };

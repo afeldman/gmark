@@ -5,90 +5,98 @@
 
 /**
  * Parse simple YAML to JavaScript object
+ * Simplified version that handles the categories.yml structure
  * @param {string} yamlText - YAML text
  * @returns {Object} Parsed object
  */
 export function parseSimpleYAML(yamlText) {
   const lines = yamlText.split("\n");
   const result = {};
-  const stack = [{ obj: result, indent: -1, currentKey: null }];
+  const stack = [];
+  let currentContext = result;
+  let currentKey = null;
+  let currentIndent = -1;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    
+    // Skip empty lines and comments
+    if (!line.trim() || line.trim().startsWith("#")) continue;
 
-    // Skip comments and empty lines
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
+    // Calculate indentation level
+    const indentMatch = line.match(/^(\s*)/);
+    const indent = indentMatch ? indentMatch[1].length : 0;
 
-    // Calculate indentation
-    const indent = line.search(/\S/);
-    const content = trimmed;
+    const content = line.trim();
 
-    // Array item (starts with -)
+    // Handle array items (- value)
     if (content.startsWith("- ")) {
-      const value = content.substring(2).trim();
-
-      // Find correct parent object at this indent level
-      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+      const value = content.slice(2).trim();
+      
+      // Make sure we're at the right context level
+      while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
         stack.pop();
+        currentContext = stack.length > 0 ? stack[stack.length - 1].obj : result;
       }
 
-      const parent = stack[stack.length - 1].obj;
-      const key = stack[stack.length - 1].currentKey;
-
-      // Create array if it doesn't exist
-      if (key && !Array.isArray(parent[key])) {
-        parent[key] = [];
+      // Get the key we should be filling
+      const key = stack.length > 0 ? stack[stack.length - 1].key : currentKey;
+      
+      // Create array if needed
+      if (key && currentContext[key] && !Array.isArray(currentContext[key])) {
+        currentContext[key] = [];
+      } else if (key && !currentContext[key]) {
+        currentContext[key] = [];
       }
 
       // Add value to array
-      if (key && Array.isArray(parent[key])) {
-        parent[key].push(value);
+      if (key && Array.isArray(currentContext[key])) {
+        currentContext[key].push(value);
       }
       continue;
     }
 
-    // Key-value pair
-    const colonIndex = content.indexOf(":");
-    if (colonIndex > -1) {
-      const key = content.substring(0, colonIndex).trim();
-      const value = content.substring(colonIndex + 1).trim();
+    // Handle key-value pairs (key: value or key:)
+    const colonIdx = content.indexOf(":");
+    if (colonIdx !== -1) {
+      const key = content.substring(0, colonIdx).trim();
+      const value = content.substring(colonIdx + 1).trim();
 
-      // Pop stack to find correct parent at this indent level
-      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+      // Pop stack if we've decreased indentation
+      while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
         stack.pop();
+        currentContext = stack.length > 0 ? stack[stack.length - 1].obj : result;
       }
-
-      const parent = stack[stack.length - 1].obj;
 
       if (value === "") {
-        // Empty value means nested object (or will be array if followed by -)
-        parent[key] = {};
-        stack.push({ obj: parent[key], indent, currentKey: key });
+        // Empty value = nested object
+        currentContext[key] = {};
+        stack.push({
+          obj: currentContext[key],
+          key: key,
+          indent: indent
+        });
+        currentContext = currentContext[key];
+        currentKey = key;
       } else if (value.startsWith('"') && value.endsWith('"')) {
-        // Double-quoted string
-        parent[key] = value.slice(1, -1);
+        // Quoted string
+        currentContext[key] = value.slice(1, -1);
       } else if (value.startsWith("'") && value.endsWith("'")) {
-        // Single-quoted string
-        parent[key] = value.slice(1, -1);
+        // Single quoted string
+        currentContext[key] = value.slice(1, -1);
       } else if (value === "true") {
-        // Boolean true
-        parent[key] = true;
+        currentContext[key] = true;
       } else if (value === "false") {
-        // Boolean false
-        parent[key] = false;
+        currentContext[key] = false;
       } else if (!isNaN(value) && value !== "") {
         // Number
-        parent[key] = parseFloat(value);
+        currentContext[key] = parseFloat(value);
       } else {
-        // Plain string value
-        parent[key] = value;
+        // Plain string
+        currentContext[key] = value;
       }
 
-      // Update the key being tracked at this level
-      stack[stack.length - 1].currentKey = key;
-    }
-  }
+      currentKey = key;
 
   return result;
 }
