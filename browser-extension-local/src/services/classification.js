@@ -257,7 +257,7 @@ export class ClassificationService {
       tags,
       summary: "",
       method: "patterns",
-      color: CATEGORIES[category as keyof typeof CATEGORIES]?.color || "#6b7280",
+      color: CATEGORIES[category]?.color || "#6b7280",
     };
   }
 
@@ -319,9 +319,7 @@ Antwort (nur JSON, keine anderen Worte):
         tags: result.tags || [],
         summary: result.summary || "",
         method: "prompt-api",
-        color:
-          CATEGORIES[result.category as keyof typeof CATEGORIES]?.color ||
-          "#6b7280",
+        color: CATEGORIES[result.category]?.color || "#6b7280",
       };
     } catch (error) {
       console.error("❌ Prompt API classification error:", error);
@@ -415,7 +413,7 @@ Antwort (nur JSON, keine anderen Worte):
    * Get Category Color
    */
   getCategoryColor(category) {
-    return CATEGORIES[category as keyof typeof CATEGORIES]?.color || "#6b7280";
+    return CATEGORIES[category]?.color || "#6b7280";
   }
 
   /**

@@ -5,6 +5,7 @@ Der Bootstrap-Service migriert automatisch alle bestehenden Chrome Bookmarks in 
 ## Prozess
 
 ### 1. **Automatisches Starten**
+
 - Bei Installation der Extension wird Bootstrap automatisch gestartet
 - Kann auch manuell aus der Popup-UI gestartet werden
 
@@ -38,6 +39,7 @@ Der Bootstrap-Service migriert automatisch alle bestehenden Chrome Bookmarks in 
 ## Features
 
 ### ✅ Was wird migriert
+
 - ✅ Alle Chrome Bookmarks (außer Ordnern)
 - ✅ Titel & URL
 - ✅ Automatische Klassifikation
@@ -45,12 +47,15 @@ Der Bootstrap-Service migriert automatisch alle bestehenden Chrome Bookmarks in 
 - ✅ Tag-Generierung
 
 ### 🚫 Was wird NICHT migriert
+
 - ❌ Bookmark-Ordner-Struktur (wird neu erstellt)
 - ❌ Bereits in GMARK vorhandene Bookmarks (Duplikat-Check)
 - ❌ Chrome Sync-Status
 
 ### 📊 Progress-Tracking
+
 Während Bootstrap läuft:
+
 - Live-Progress in der Popup-UI
 - Statistiken (✅ Erfolgreich, ❌ Fehler, ⏭️ Übersprungen)
 - Prozentuale Fortschritt
@@ -83,18 +88,18 @@ Bookmarks Bar
 ```javascript
 // Starte Bootstrap mit Progress-Callback
 const result = await chrome.runtime.sendMessage({
-  type: "START_BOOTSTRAP"
+  type: "START_BOOTSTRAP",
 });
 
 // Progress-Callback (wird automatisch aufgerufen)
 onProgress({
-  processed: 42,           // Verarbeitete Bookmarks
-  total: 100,              // Gesamt Bookmarks
-  success: 40,             // Erfolgreich gespeichert
-  failed: 1,               // Fehler
-  skipped: 1,              // Übersprungen (Duplikate)
-  percentage: 42           // 0-100
-})
+  processed: 42, // Verarbeitete Bookmarks
+  total: 100, // Gesamt Bookmarks
+  success: 40, // Erfolgreich gespeichert
+  failed: 1, // Fehler
+  skipped: 1, // Übersprungen (Duplikate)
+  percentage: 42, // 0-100
+});
 ```
 
 ### `BootstrapService.getBootstrapStatus()`
@@ -118,13 +123,14 @@ Setzt Bootstrap-Flag zurück (nur zum Testen):
 
 ```javascript
 await chrome.runtime.sendMessage({
-  type: "RESET_BOOTSTRAP"
+  type: "RESET_BOOTSTRAP",
 });
 ```
 
 ## Fehlerbehandlung
 
 Bootstrap ist fehlertolerant:
+
 - ✅ Fehler bei einzelnen Bookmarks werden gefangen
 - ✅ Fortsetzung mit nächsten Bookmark
 - ✅ Fehlerstatistiken werden getracked
@@ -133,6 +139,7 @@ Bootstrap ist fehlertolerant:
 ## Klassifikation während Bootstrap
 
 Bootstrap nutzt ClassificationService mit:
+
 1. **Pattern Matching** (schnell, offline)
 2. **Chrome Prompt API** (falls verfügbar)
 3. **Fallback** auf "Other" (immer funktioniert)
@@ -164,15 +171,19 @@ Alle Bootstrap-Aktivitäten werden in der Browser-Console geloggt:
 ## Häufige Fragen
 
 ### F: Werden meine originalen Chrome Bookmarks gelöscht?
+
 **A:** Nein! Chrome Bookmarks werden in den "GMARK Local" Ordner verschoben, aber nicht gelöscht.
 
 ### F: Kann ich Bootstrap rückgängig machen?
+
 **A:** Die lokal gespeicherten Bookmarks können gelöscht werden. Chrome Bookmarks können manuell aus "GMARK Local" zurück an den ursprünglichen Platz verschoben werden.
 
 ### F: Wie lange dauert Bootstrap?
+
 **A:** Bei 1000 Bookmarks ~5-10 Minuten (mit Classification).
 
 ### F: Was wenn die Extension während Bootstrap abstürzt?
+
 **A:** Beim nächsten Start wird Bootstrap fortgesetzt (nur noch nicht verarbeitete Bookmarks).
 
 ---
