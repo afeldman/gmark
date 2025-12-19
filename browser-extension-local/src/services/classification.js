@@ -22,6 +22,14 @@ import { aiSingleton } from "./ai-provider.js";
 
 import { loadYAML } from "../utils/yaml-parser.js";
 
+/**
+ * Formatiere Confidence auf 5 Dezimalstellen
+ */
+function formatConfidence(value) {
+  const num = parseFloat(value) || 0;
+  return Math.round(num * 100000) / 100000;
+}
+
 // Wird beim Start geladen
 let CATEGORIES = {};
 
@@ -147,6 +155,8 @@ export class ClassificationService {
         bookmark.description,
         bookmark.url
       );
+      patternResult.confidence = formatConfidence(patternResult.confidence);
+
       logger.log(
         "  ✅ Pattern result:",
         patternResult.category,
@@ -222,7 +232,8 @@ export class ClassificationService {
       ([, a], [, b]) => b - a
     )[0];
     const category = bestCategory?.[0] || "Other";
-    const confidence = Math.min((bestCategory?.[1] || 0) / 10, 1);
+    const rawConfidence = Math.min((bestCategory?.[1] || 0) / 10, 1);
+    const confidence = formatConfidence(rawConfidence);
 
     logger.log("  Scores:", scores);
     logger.log("  Best:", category, `(${confidence})`);
@@ -316,7 +327,7 @@ Antwort (nur JSON, keine anderen Worte):
 
       return {
         category: result.category || "Other",
-        confidence: result.confidence || 0.5,
+        confidence: formatConfidence(result.confidence || 0.5),
         tags: result.tags || [],
         summary: result.summary || "",
         method: "prompt-api",
@@ -399,7 +410,7 @@ Antwort (nur JSON, keine anderen Worte):
         results.push({
           bookmarkId: bookmark.id,
           category: "Other",
-          confidence: 0,
+          confidence: formatConfidence(0),
           tags: [],
           summary: "",
           method: "error",
