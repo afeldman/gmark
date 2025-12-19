@@ -7,8 +7,6 @@
  * Diese Datei stellt Runtime-Funktionen für sichere Nutzung der Prompt API zur Verfügung
  */
 
-import { checkPromptAPIInTab } from "../utils/ai-proxy.js";
-
 /**
  * Check if Prompt API is available
  * @param {any} ai - AI object (from self.ai or globalThis.ai)
@@ -35,31 +33,11 @@ export async function checkCanCreateSession(statusCallback) {
     console.log("  AI object available:", !!ai);
     console.log("  languageModel available:", hasLM);
 
-    // Wenn im Service Worker Context kein AI verfügbar, prüfe Tab-Context
+    // Wenn im Service Worker Context kein AI verfügbar, nicht verfügbar
     if (!hasLM || typeof ai.languageModel.canCreateTextSession !== "function") {
       console.log("  ⚠️ AI nicht im Service Worker verfügbar");
-      console.log("  🔄 Prüfe Tab-Context als Fallback...");
-
-      try {
-        const tabResult = await checkPromptAPIInTab();
-
-        if (tabResult.available) {
-          console.log("  ✅ AI verfügbar in Tab-Context!");
-          if (statusCallback) statusCallback("readily");
-          return true;
-        } else {
-          console.log(
-            "  ❌ AI auch in Tab-Context nicht verfügbar:",
-            tabResult.error
-          );
-          if (statusCallback) statusCallback("no");
-          return false;
-        }
-      } catch (error) {
-        console.error("  ❌ Tab-Context Check fehlgeschlagen:", error);
-        if (statusCallback) statusCallback("no");
-        return false;
-      }
+      if (statusCallback) statusCallback("no");
+      return false;
     }
 
     const status = await ai.languageModel.canCreateTextSession();

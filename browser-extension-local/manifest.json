@@ -46,11 +46,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "src/utils/page-reader.js",
-        "src/config/categories.yml",
-        "src/utils/ai-worker.html"
-      ],
+      "resources": ["src/utils/page-reader.js", "src/config/categories.yml"],
       "matches": ["<all_urls>"]
     }
   ]

@@ -1,20 +1,16 @@
 /**
- * Bootstrap Service - URL-für-URL Verarbeitung mit KI
+ * Bootstrap Service - URL-für-URL Verarbeitung
  *
  * Workflow:
- * 1. Prompt API Check → Abbruch bei Fehler mit Hilfestellung
- * 2. Für jede URL einzeln:
- *    - Prompt API Check vor Verarbeitung
- *    - Erreichbar? → Titel, Seite laden, KI-Zusammenfassung, KI-Klassifikation → Kategorie-Ordner
+ * 1. Für jede URL einzeln:
+ *    - Erreichbar? → Titel laden, Klassifikation, Kategorie-Ordner
  *    - Nicht erreichbar? → "not_responding" Ordner
- *    - Tag "ai: true" auf jede verarbeitete URL
- * 3. Resume nach Neustart bei nächster unverarbeiteter URL
- * 4. Nach Bootstrap: Automatische KI-Klassifikation für neue Links
+ * 2. Resume nach Neustart bei nächster unverarbeiteter URL
+ * 3. Nach Bootstrap: Automatische Klassifikation für neue Links
  */
 
 import StorageManager from "../utils/storage.js";
 import ClassificationService from "./classification.js";
-import { summarizeInTab } from "../utils/ai-proxy.js";
 import {
   checkCanCreateSession,
   createLanguageModelSession,
@@ -582,24 +578,7 @@ Nachdem Änderungen vorgenommen wurden:
             // SCHRITT 6.5: Erstelle Zusammenfassung mit KI (über Tab-Context)
             // ============================================================
             let summary = "";
-            if (pageContent) {
-              console.log(`  🤖 Erstelle KI-Zusammenfassung...`);
-              try {
-                summary = await summarizeInTab(pageContent, bookmark.title);
-
-                if (summary) {
-                  console.log(
-                    `  ✅ Zusammenfassung erstellt (${summary.length} Zeichen)`
-                  );
-                }
-              } catch (error) {
-                console.warn(
-                  `  ⚠️ Zusammenfassung fehlgeschlagen:`,
-                  error.message
-                );
-                summary = "";
-              }
-            }
+            // Zusammenfassung entfernt - nur Pattern-Matching Klassifikation
 
             // ============================================================
             // SCHRITT 6.6: Klassifiziere mit KI
