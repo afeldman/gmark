@@ -26,8 +26,8 @@ import { loadYAML } from "../utils/yaml-parser.js";
  * Formatiere Confidence auf 5 Dezimalstellen
  */
 function formatConfidence(value) {
-  const num = parseFloat(value) || 0;
-  return Math.round(num * 100000) / 100000;
+  const num = parseFloat(value) || 0.0;
+  return Math.round(num * 100_000) / 100_000;
 }
 
 // Wird beim Start geladen
@@ -164,19 +164,19 @@ export class ClassificationService {
       );
 
       // Wenn confidence hoch genug, use it
-      if (patternResult.confidence >= 0.8) {
-        logger.log("  🎯 High confidence, using pattern result");
+      if (patternResult.confidence >= 0.6) {
+        logger.log("  🎯 Sufficient confidence, using pattern result");
         return patternResult;
       }
 
-      // Fallback: Verwende Pattern-Result (auch wenn confidence < 0.8)
+      // Fallback: Verwende Pattern-Result (auch wenn confidence < 0.6)
       logger.log("  🔙 Using pattern result as fallback");
       return patternResult;
     } catch (error) {
       logger.error("❌ Classification error:", error);
       return {
         category: "Other",
-        confidence: 0,
+        confidence: formatConfidence(0.3),
         tags: [],
         summary: "",
         method: "error-fallback",
@@ -232,7 +232,8 @@ export class ClassificationService {
       ([, a], [, b]) => b - a
     )[0];
     const category = bestCategory?.[0] || "Other";
-    const rawConfidence = Math.min((bestCategory?.[1] || 0) / 10, 1);
+    const maxScore = Math.max(...Object.values(scores), 1);
+    const rawConfidence = maxScore > 0 ? Math.min(bestCategory?.[1] / maxScore, 1) : 0.2;
     const confidence = formatConfidence(rawConfidence);
 
     logger.log("  Scores:", scores);
