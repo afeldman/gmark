@@ -15,7 +15,7 @@ import {
   createLanguageModelSession,
   classifyWithAI,
   safeDestroySession,
-} from "../types/ai.d.ts";
+} from "../types/ai.js";
 
 const CATEGORIES = {
   Development: {
