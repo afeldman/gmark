@@ -274,6 +274,7 @@ const app = {
   },
 
   showView(viewName) {
+    console.log(`📱 Showing view: ${viewName}`);
     document.querySelectorAll(".state").forEach((el) => {
       el.classList.add("hidden");
     });
@@ -285,6 +286,8 @@ const app = {
       document.getElementById("settings-view").classList.remove("hidden");
     } else if (viewName === "error") {
       document.getElementById("error-view").classList.remove("hidden");
+    } else if (viewName === "bootstrap") {
+      document.getElementById("bootstrap-view").classList.remove("hidden");
     }
 
     this.state = viewName;
@@ -305,11 +308,15 @@ const app = {
   },
 
   showLoading() {
+    console.log("📱 Showing loading state");
+    document.querySelectorAll(".state").forEach((el) => {
+      el.classList.add("hidden");
+    });
     document.getElementById("loading").classList.remove("hidden");
-    document.getElementById("main-view").classList.add("hidden");
   },
 
   showError(message) {
+    console.error("📱 Showing error:", message);
     document.getElementById("error-message").textContent = message;
     this.showView("error");
   },
