@@ -11,10 +11,7 @@
 export function parseSimpleYAML(yamlText) {
   const lines = yamlText.split("\n");
   const result = {};
-  let currentPath = [];
-  let currentIndent = 0;
-  let currentObject = result;
-  const stack = [{ obj: result, indent: -2 }];
+  const stack = [{ obj: result, indent: -1, key: null }];
 
   for (let line of lines) {
     // Skip comments and empty lines
@@ -23,26 +20,28 @@ export function parseSimpleYAML(yamlText) {
 
     // Calculate indentation
     const indent = line.search(/\S/);
-    const content = line.trim();
+    const content = trimmed;
 
     // Array item
     if (content.startsWith("- ")) {
       const value = content.substring(2).trim();
 
-      // Find parent array
-      while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
+      // Find the parent that should contain this array
+      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
         stack.pop();
       }
 
       const parent = stack[stack.length - 1].obj;
-      const lastKey = stack[stack.length - 1].lastKey;
+      const key = stack[stack.length - 1].key;
 
-      if (lastKey && !Array.isArray(parent[lastKey])) {
-        parent[lastKey] = [];
+      // If parent[key] doesn't exist, create array
+      if (key && !Array.isArray(parent[key])) {
+        parent[key] = [];
       }
 
-      if (lastKey) {
-        parent[lastKey].push(value);
+      // Add to array
+      if (key) {
+        parent[key].push(value);
       }
       continue;
     }
@@ -51,34 +50,38 @@ export function parseSimpleYAML(yamlText) {
     const colonIndex = content.indexOf(":");
     if (colonIndex > -1) {
       const key = content.substring(0, colonIndex).trim();
-      const value = content.substring(colonIndex + 1).trim();
+      let value = content.substring(colonIndex + 1).trim();
 
-      // Pop stack to correct level
+      // Pop stack to find correct parent
       while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
         stack.pop();
       }
 
       const parent = stack[stack.length - 1].obj;
 
-      if (value === "" || value === "{}" || value === "[]") {
-        // New object or array
+      if (value === "") {
+        // New nested object (key with no value means object)
         parent[key] = {};
-        stack.push({ obj: parent[key], indent, lastKey: key });
-      } else if (value.startsWith('"') || value.startsWith("'")) {
-        // String value
+        stack.push({ obj: parent[key], indent, key });
+      } else if (value.startsWith('"') && value.endsWith('"')) {
+        // Double-quoted string
         parent[key] = value.slice(1, -1);
-      } else if (!isNaN(value)) {
+      } else if (value.startsWith("'") && value.endsWith("'")) {
+        // Single-quoted string
+        parent[key] = value.slice(1, -1);
+      } else if (!isNaN(value) && value !== "") {
         // Number
         parent[key] = parseFloat(value);
-      } else if (value === "true" || value === "false") {
-        // Boolean
-        parent[key] = value === "true";
+      } else if (value === "true") {
+        // Boolean true
+        parent[key] = true;
+      } else if (value === "false") {
+        // Boolean false
+        parent[key] = false;
       } else {
-        // Plain string
+        // Plain string value
         parent[key] = value;
       }
-
-      stack[stack.length - 1].lastKey = key;
     }
   }
 
