@@ -11,6 +11,16 @@ const app = {
   async init() {
     this.showLoading();
     try {
+      // Überprüfe ob Bootstrap nötig ist
+      const bootstrapStatus = await chrome.runtime.sendMessage({
+        type: "GET_BOOTSTRAP_STATUS",
+      });
+
+      if (!bootstrapStatus.complete) {
+        this.showView("bootstrap");
+        return;
+      }
+
       await this.loadSettings();
       await this.loadStats();
       this.attachEventListeners();
@@ -163,6 +173,14 @@ const app = {
     document.getElementById("error-close").addEventListener("click", () => {
       this.showView("main");
     });
+
+    // Bootstrap View
+    const bootstrapBtn = document.getElementById("start-bootstrap-btn");
+    if (bootstrapBtn) {
+      bootstrapBtn.addEventListener("click", () => {
+        this.startBootstrap();
+      });
+    }
   },
 
   async saveCurrentPage() {
@@ -287,6 +305,58 @@ const app = {
   showError(message) {
     document.getElementById("error-message").textContent = message;
     this.showView("error");
+  },
+
+  // Bootstrap-Methoden
+  async startBootstrap() {
+    const progressDiv = document.getElementById("bootstrap-progress");
+    const btn = document.getElementById("start-bootstrap-btn");
+
+    // Zeige Progress-Bereich
+    progressDiv.classList.remove("hidden");
+    btn.disabled = true;
+    btn.textContent = "⏳ Wird ausgeführt...";
+
+    // Höre auf Progress-Updates
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.type === "BOOTSTRAP_PROGRESS") {
+        this.updateBootstrapProgress(message.progress);
+      }
+    });
+
+    try {
+      // Starte Bootstrap
+      const result = await chrome.runtime.sendMessage({
+        type: "START_BOOTSTRAP",
+      });
+
+      if (result.success) {
+        document.getElementById("progress-text").textContent =
+          "✅ Importieren abgeschlossen!";
+
+        // Warte 2 Sekunden dann zeige Main View
+        setTimeout(() => {
+          this.init();
+        }, 2000);
+      } else {
+        this.showError(result.error || "Bootstrap fehlgeschlagen");
+      }
+    } catch (error) {
+      this.showError(error.message);
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  updateBootstrapProgress(progress) {
+    const percentage = progress.percentage || 0;
+    document.getElementById("progress-fill").style.width = percentage + "%";
+    document.getElementById(
+      "progress-text"
+    ).textContent = `${progress.processed}/${progress.total} Bookmarks verarbeitet (${percentage}%)`;
+    document.getElementById("stat-success").textContent = progress.success;
+    document.getElementById("stat-failed").textContent = progress.failed;
+    document.getElementById("stat-skipped").textContent = progress.skipped;
   },
 };
 

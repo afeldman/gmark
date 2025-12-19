@@ -6,12 +6,15 @@
  * - Bookmark-Events
  * - Duplikat-Erkennung (Hintergrund)
  * - Message-Routing
+ * - Bootstrap (Migrieren von Chrome Bookmarks)
  */
 
 import StorageManager from "./utils/storage.js";
+import BootstrapService from "./services/bootstrap.js";
 
 // Initialisiere Kontextmenü
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
+  // Erstelle Kontextmenü
   chrome.contextMenus.create({
     id: "gmark-save-page",
     title: "In GMARK speichern",
@@ -28,6 +31,14 @@ chrome.runtime.onInstalled.addListener(() => {
   StorageManager.setSetting("autoClassify", true);
   StorageManager.setSetting("autoDetectDuplicates", true);
   StorageManager.setSetting("similarityThreshold", 0.8);
+
+  // Starte Bootstrap wenn nicht schon durchgeführt
+  console.log("🔧 Extension installiert - starte Bootstrap...");
+  await BootstrapService.runBootstrap((progress) => {
+    console.log(
+      `⏳ Bootstrap: ${progress.processed}/${progress.total} (${progress.percentage}%)`
+    );
+  });
 });
 
 // Kontextmenü-Handler
@@ -79,6 +90,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "GET_PENDING_DUPLICATES") {
     StorageManager.getPendingDuplicates()
       .then((duplicates) => sendResponse({ duplicates }))
+      .catch((error) => sendResponse({ error: error.message }));
+    return true;
+  }
+
+  if (message.type === "START_BOOTSTRAP") {
+    BootstrapService.runBootstrap((progress) => {
+      // Sende Progress an Popup
+      chrome.runtime
+        .sendMessage({
+          type: "BOOTSTRAP_PROGRESS",
+          progress,
+        })
+        .catch(() => {
+          // Popup könnte nicht offen sein
+        });
+    })
+      .then((result) => sendResponse(result))
+      .catch((error) => sendResponse({ error: error.message }));
+    return true;
+  }
+
+  if (message.type === "GET_BOOTSTRAP_STATUS") {
+    BootstrapService.getBootstrapStatus()
+      .then((status) => sendResponse(status))
+      .catch((error) => sendResponse({ error: error.message }));
+    return true;
+  }
+
+  if (message.type === "RESET_BOOTSTRAP") {
+    BootstrapService.resetBootstrap()
+      .then(() => sendResponse({ success: true }))
       .catch((error) => sendResponse({ error: error.message }));
     return true;
   }

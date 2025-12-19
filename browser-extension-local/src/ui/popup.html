@@ -128,6 +128,42 @@
           <button id="error-close" class="btn btn-secondary">Schließen</button>
         </div>
       </div>
+
+      <!-- Bootstrap View -->
+      <div id="bootstrap-view" class="state hidden">
+        <header>
+          <h1>🚀 Importiere Bookmarks</h1>
+        </header>
+
+        <main>
+          <div class="bootstrap-info">
+            <p>
+              Importiere deine vorhandenen Chrome Bookmarks automatisch in
+              GMARK.
+            </p>
+            <p>
+              Jedes Bookmark wird klassifiziert und in die richtige Kategorie
+              verschoben.
+            </p>
+          </div>
+
+          <div id="bootstrap-progress" class="progress-section hidden">
+            <div class="progress-bar">
+              <div id="progress-fill" class="progress-fill"></div>
+            </div>
+            <p id="progress-text">Startet...</p>
+            <ul id="progress-stats">
+              <li>✅ Erfolgreich: <span id="stat-success">0</span></li>
+              <li>❌ Fehler: <span id="stat-failed">0</span></li>
+              <li>⏭️ Übersprungen: <span id="stat-skipped">0</span></li>
+            </ul>
+          </div>
+
+          <button id="start-bootstrap-btn" class="btn btn-primary">
+            🔄 Importieren starten
+          </button>
+        </main>
+      </div>
     </div>
 
     <script src="popup.js" type="module"></script>
