@@ -1,0 +1,160 @@
+# GMARK Bookmark Categories Configuration
+# Einfach neue Kategorien hinzufügen oder bestehende anpassen
+
+categories:
+  Development:
+    patterns:
+      - github
+      - stackoverflow
+      - npm
+      - docker
+      - kubernetes
+      - code
+      - programming
+      - javascript
+      - python
+      - react
+      - api
+      - library
+      - framework
+      - gitlab
+      - bitbucket
+      - typescript
+      - nodejs
+      - backend
+      - frontend
+    color: "#4f46e5"
+
+  Social:
+    patterns:
+      - twitter
+      - facebook
+      - instagram
+      - linkedin
+      - reddit
+      - tiktok
+      - social
+      - community
+      - follow
+      - like
+      - share
+      - mastodon
+      - discord
+      - slack
+    color: "#ec4899"
+
+  News:
+    patterns:
+      - news
+      - article
+      - blog
+      - post
+      - story
+      - breaking
+      - headline
+      - magazine
+      - journal
+      - press
+      - bbc
+      - cnn
+      - nyt
+      - medium
+      - substack
+    color: "#f59e0b"
+
+  Shopping:
+    patterns:
+      - amazon
+      - ebay
+      - shop
+      - buy
+      - cart
+      - checkout
+      - product
+      - store
+      - price
+      - discount
+      - sale
+      - order
+      - aliexpress
+      - etsy
+    color: "#10b981"
+
+  Education:
+    patterns:
+      - coursera
+      - udemy
+      - khan academy
+      - edx
+      - learn
+      - course
+      - tutorial
+      - university
+      - school
+      - education
+      - training
+      - lecture
+      - udacity
+      - pluralsight
+      - linkedin learning
+    color: "#8b5cf6"
+
+  Entertainment:
+    patterns:
+      - youtube
+      - netflix
+      - spotify
+      - twitch
+      - gaming
+      - movie
+      - music
+      - stream
+      - video
+      - podcast
+      - entertainment
+      - film
+      - series
+      - anime
+      - hulu
+      - disney
+    color: "#f43f5e"
+
+  Documentation:
+    patterns:
+      - docs
+      - documentation
+      - reference
+      - guide
+      - manual
+      - readme
+      - wiki
+      - mdn
+      - developer
+      - devdocs
+      - spec
+      - rfc
+    color: "#06b6d4"
+
+  Tools:
+    patterns:
+      - tool
+      - utility
+      - converter
+      - generator
+      - calculator
+      - editor
+      - online
+      - free
+      - webapp
+      - service
+      - platform
+    color: "#64748b"
+
+  Other:
+    patterns:
+      - online
+      - free
+      - web
+      - site
+      - page
+    color: "#6b7280"
