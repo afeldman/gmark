@@ -167,9 +167,7 @@ export class BootstrapService {
               url: bookmark.url,
             });
 
-            console.log(
-              `  ✅ Klassifiziert: ${classification.category}`
-            );
+            console.log(`  ✅ Klassifiziert: ${classification.category}`);
 
             // ============================================================
             // SCHRITT 5.4: Speichere in IndexedDB
@@ -186,9 +184,7 @@ export class BootstrapService {
               migratedAt: Date.now(),
             });
 
-            console.log(
-              `  💾 In IndexedDB gespeichert`
-            );
+            console.log(`  💾 In IndexedDB gespeichert`);
 
             // ============================================================
             // SCHRITT 5.5: Verschiebe in Kategorien-Ordner
@@ -423,8 +419,7 @@ export class BootstrapService {
       if (tree && tree[0] && tree[0].children) {
         const existing = tree[0].children.find(
           (child) =>
-            !child.url &&
-            child.title.toLowerCase() === folderName.toLowerCase()
+            !child.url && child.title.toLowerCase() === folderName.toLowerCase()
         );
 
         if (existing) {
@@ -443,6 +438,34 @@ export class BootstrapService {
     } catch (error) {
       console.warn(`  ⚠️ Fehler bei Ordner "${folderName}":`, error.message);
       return null;
+    }
+  }
+
+  /**
+   * Prüfe Bootstrap-Status
+   */
+  async getBootstrapStatus() {
+    try {
+      const bootstrapComplete = await StorageManager.getSetting(
+        "bootstrapComplete"
+      );
+      const processedURLs =
+        (await StorageManager.getSetting("bootstrapProcessedURLs")) || [];
+      const bootstrapDate = await StorageManager.getSetting("bootstrapDate");
+
+      return {
+        complete: bootstrapComplete || false,
+        processedCount: processedURLs.length,
+        lastRunDate: bootstrapDate || null,
+      };
+    } catch (error) {
+      console.error("❌ Fehler beim Prüfen des Bootstrap-Status:", error);
+      return {
+        complete: false,
+        processedCount: 0,
+        lastRunDate: null,
+        error: error.message,
+      };
     }
   }
 }

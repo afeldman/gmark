@@ -192,12 +192,21 @@ export class ClassificationService {
     // Score jede Kategorie
     for (const [category, data] of Object.entries(CATEGORIES)) {
       let score = 0;
+      
+      // Safety check - wenn patterns nicht existiert, skip
+      if (!data || !Array.isArray(data.patterns)) {
+        console.warn(`  ⚠️ Category "${category}" hat keine patterns array`);
+        scores[category] = 0;
+        continue;
+      }
+      
       for (const pattern of data.patterns) {
         const regex = new RegExp(`\\b${pattern}\\b`, "gi");
         const matches = combined.match(regex);
         score += (matches?.length || 0) * 2; // Gewichte Pattern-Matches
       }
       scores[category] = score;
+    }
     }
 
     // Finde beste Kategorie
