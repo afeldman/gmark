@@ -12,9 +12,10 @@ export async function checkPromptAPIInTab() {
   console.log("🔍 Prüfe Prompt API in Tab-Context...");
 
   try {
-    // Erstelle temporären Tab
+    // Erstelle temporären Tab mit Extension-eigener HTML-Datei
+    const workerUrl = chrome.runtime.getURL("src/utils/ai-worker.html");
     const tab = await chrome.tabs.create({
-      url: "about:blank",
+      url: workerUrl,
       active: false,
     });
 
@@ -78,9 +79,10 @@ export async function classifyInTab(bookmark) {
   console.log(`🤖 Klassifiziere in Tab-Context: ${bookmark.title}`);
 
   try {
-    // Erstelle temporären Tab
+    // Erstelle temporären Tab mit Extension-eigener HTML-Datei
+    const workerUrl = chrome.runtime.getURL("src/utils/ai-worker.html");
     const tab = await chrome.tabs.create({
-      url: "about:blank",
+      url: workerUrl,
       active: false,
     });
 
@@ -183,9 +185,10 @@ export async function summarizeInTab(content, title) {
   console.log(`📝 Erstelle Zusammenfassung in Tab-Context...`);
 
   try {
-    // Erstelle temporären Tab
+    // Erstelle temporären Tab mit Extension-eigener HTML-Datei
+    const workerUrl = chrome.runtime.getURL("src/utils/ai-worker.html");
     const tab = await chrome.tabs.create({
-      url: "about:blank",
+      url: workerUrl,
       active: false,
     });
 
