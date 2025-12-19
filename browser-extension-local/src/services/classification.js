@@ -207,7 +207,6 @@ export class ClassificationService {
       }
       scores[category] = score;
     }
-    }
 
     // Finde beste Kategorie
     const bestCategory = Object.entries(scores).sort(
