@@ -38,9 +38,23 @@ CREATE TABLE bookmark_keywords (
     FOREIGN KEY (keyword_id) REFERENCES keywords(id)
 );
 
+CREATE TABLE bookmark_folders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    parent_id INTEGER,
+    full_path TEXT NOT NULL,
+    created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    modified_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (parent_id) REFERENCES bookmark_folders(id) ON DELETE CASCADE,
+    UNIQUE(user_id, full_path)
+);
+
 CREATE TABLE bookmarks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
+    folder_id INTEGER,
     url TEXT NOT NULL UNIQUE,
     title TEXT,
     hash TEXT UNIQUE,
@@ -49,7 +63,8 @@ CREATE TABLE bookmarks (
     modified_time DATETIME,
     changed_time DATETIME,
     mode TEXT CHECK(mode IN ("user_mode", "team_mode", "public_mode")),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (folder_id) REFERENCES bookmark_folders(id) ON DELETE SET NULL
 );
 
 INSERT INTO keywords (keyword) VALUES ("javascript"),
@@ -97,4 +112,11 @@ INSERT INTO keywords (keyword) VALUES ("javascript"),
                                         ("sequelize"),
                                         ("knex"),
                                         ("rust");
+
+-- Create default root folders for common categories
+INSERT INTO bookmark_folders (user_id, name, parent_id, full_path) VALUES 
+    (1, "tech", NULL, "/tech"),
+    (1, "personal", NULL, "/personal"),
+    (1, "work", NULL, "/work"),
+    (1, "unsorted", NULL, "/unsorted");
 

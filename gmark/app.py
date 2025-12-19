@@ -3,17 +3,21 @@ import sqlite3
 from fastapi.middleware.cors import CORSMiddleware
 
 from controllers.UserController import user_controller_router
+from controllers.BookmarkController import bookmark_controller_router
 import uvicorn
 
 
 app = FastAPI()
 
 tags_metadata = [
-    {"name": "Users", "description": "Operations related to user management"}
+    {"name": "Users", "description": "Operations related to user management"},
+    {"name": "Bookmarks", "description": "Operations for bookmark management with AI classification"},
+    {"name": "Folders", "description": "Filesystem-like folder hierarchy for bookmarks"}
 ]
 
 # Include the routers from controller modules
 app.include_router(user_controller_router, prefix="/users", tags=["Users"])
+app.include_router(bookmark_controller_router, prefix="/api", tags=["Bookmarks", "Folders"])
 
 app.add_middleware(
     CORSMiddleware,
