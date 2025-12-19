@@ -12,6 +12,14 @@
 import StorageManager from "./utils/storage.js";
 import BootstrapService from "./services/bootstrap.js";
 import StorageOptimizer from "./utils/storage-optimizer.js";
+import AIProviderManager from "./services/ai-provider.js";
+import ClassificationService from "./services/classification.js";
+import {
+  checkCanCreateSession,
+  createLanguageModelSession,
+  summarizeWithAI,
+  safeDestroySession,
+} from "./types/ai.js";
 
 // Initialisiere Kontextmenü
 chrome.runtime.onInstalled.addListener(async () => {
@@ -78,8 +86,15 @@ chrome.runtime.onInstalled.addListener(async () => {
 
   await BootstrapService.runBootstrap((progress) => {
     console.log(
-      `⏳ Bootstrap Progress: ${progress.processed}/${progress.total} (${progress.percentage}%) | ✅ ${progress.success} | ❌ ${progress.failed} | ⏭️ ${progress.skipped}`
+      `⏳ Bootstrap: ${progress.processed}/${progress.total} (${
+        progress.percentage
+      }%) | ✅ ${progress.success} | ❌ ${progress.failed} | ⏭️ ${
+        progress.skipped
+      } | 🔴 ${progress.notResponding || 0}`
     );
+    if (progress.currentTitle) {
+      console.log(`   Aktuell: ${progress.currentTitle}`);
+    }
   });
 });
 
@@ -285,6 +300,97 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     return true;
   }
+
+  // =====================================================================
+  // AI Provider Settings Handler
+  // =====================================================================
+
+  if (message.type === "getSetting") {
+    console.log("\n⚙️ Lade Setting:", message.key);
+    StorageManager.getSetting(message.key)
+      .then((value) => {
+        console.log("  ✅ Setting geladen:", message.key, "=", value);
+        sendResponse({ value });
+      })
+      .catch((error) => {
+        console.error("  ❌ Fehler beim Laden des Settings:", error);
+        sendResponse({ error: error.message });
+      });
+    return true;
+  }
+
+  if (message.type === "setSetting") {
+    console.log("\n⚙️ Speichere Setting:", message.key, "=", message.value);
+    StorageManager.setSetting(message.key, message.value)
+      .then(() => {
+        console.log("  ✅ Setting gespeichert:", message.key);
+        sendResponse({ success: true });
+      })
+      .catch((error) => {
+        console.error("  ❌ Fehler beim Speichern des Settings:", error);
+        sendResponse({ error: error.message });
+      });
+    return true;
+  }
+
+  if (message.type === "getProviderConfig") {
+    console.log("\n⚙️ Lade Provider-Config:", message.provider);
+    AIProviderManager.getProviderConfig(message.provider)
+      .then((config) => {
+        console.log("  ✅ Config geladen:", config);
+        sendResponse({ config });
+      })
+      .catch((error) => {
+        console.error("  ❌ Fehler beim Laden der Config:", error);
+        sendResponse({ error: error.message });
+      });
+    return true;
+  }
+
+  if (message.type === "setProviderConfig") {
+    console.log("\n⚙️ Speichere Provider-Config:", message.provider);
+    AIProviderManager.setProviderConfig(message.provider, message.config)
+      .then(() => {
+        console.log("  ✅ Provider-Config gespeichert");
+        sendResponse({ success: true });
+      })
+      .catch((error) => {
+        console.error("  ❌ Fehler beim Speichern der Config:", error);
+        sendResponse({ error: error.message });
+      });
+    return true;
+  }
+
+  if (message.type === "checkProviderAvailability") {
+    console.log("\n🔍 Prüfe Provider-Verfügbarkeit:", message.provider);
+    AIProviderManager.checkProviderAvailability(message.provider)
+      .then((result) => {
+        console.log("  ✅ Provider-Check abgeschlossen:", result);
+        sendResponse(result);
+      })
+      .catch((error) => {
+        console.error("  ❌ Fehler beim Provider-Check:", error);
+        sendResponse({
+          available: false,
+          error: error.message,
+        });
+      });
+    return true;
+  }
+
+  if (message.type === "classifyWithProvider") {
+    console.log("\n🤖 Klassifiziere mit Provider:", message.provider);
+    AIProviderManager.classifyWithProvider(message.data)
+      .then((result) => {
+        console.log("  ✅ Klassifikation abgeschlossen:", result);
+        sendResponse(result);
+      })
+      .catch((error) => {
+        console.error("  ❌ Fehler bei Klassifikation:", error);
+        sendResponse({ error: error.message });
+      });
+    return true;
+  }
 });
 
 // Chrome Bookmark-Events: leere Ordner global bereinigen
@@ -305,6 +411,20 @@ async function savePage(url, title, tabId) {
   console.log("  Tab ID:", tabId);
 
   try {
+    // ============================================================
+    // SCHRITT 1: Duplikat-Prüfung
+    // ============================================================
+    console.log("  🔍 Prüfe auf Duplikate...");
+    const duplicateCheck = await checkAndHandleDuplicates(url, {
+      title,
+      url,
+    });
+
+    if (duplicateCheck.isDuplicate) {
+      console.log("  ⚠️ Duplikat gefunden:", duplicateCheck.existing.id);
+      return duplicateCheck;
+    }
+
     // Prüfe ob Bootstrap abgeschlossen ist
     const bootstrapComplete = await StorageManager.getSetting(
       "bootstrapComplete"
@@ -317,23 +437,6 @@ async function savePage(url, title, tabId) {
     });
     console.log("  ✅ Inhalt extrahiert");
 
-    // Duplikate prüfen
-    console.log("  🔍 Prüfe auf Duplikate...");
-    const existing = await StorageManager.getBookmarkByNormalizedUrl(
-      StorageManager.normalizeUrl(url)
-    );
-
-    if (existing) {
-      console.log("  ⚠️ Duplikat gefunden:", existing.id);
-      // Duplikat gefunden
-      chrome.runtime.sendMessage({
-        type: "DUPLICATE_FOUND",
-        existing,
-        new: { url, title },
-      });
-      return;
-    }
-
     let bookmark;
 
     // Wenn Bootstrap abgeschlossen ist, nutze KI automatisch
@@ -341,11 +444,6 @@ async function savePage(url, title, tabId) {
       console.log(
         "  🤖 Bootstrap abgeschlossen - nutze KI für Klassifikation..."
       );
-
-      // Importiere ClassificationService
-      const ClassificationService = (
-        await import("./services/classification.js")
-      ).default;
 
       const classification = await ClassificationService.classify({
         title: title || "Untitled",
@@ -358,14 +456,6 @@ async function savePage(url, title, tabId) {
       if (response.pageText) {
         console.log("  📝 Erstelle Seitenzusammenfassung...");
         try {
-          const aiModule = await import("./types/ai.js");
-          const {
-            checkCanCreateSession,
-            createLanguageModelSession,
-            summarizeWithAI,
-            safeDestroySession,
-          } = aiModule;
-
           if (await checkCanCreateSession()) {
             const session = await createLanguageModelSession();
             if (session) {
@@ -413,10 +503,18 @@ async function savePage(url, title, tabId) {
       };
     }
 
-    // Speichern
+    // ============================================================
+    // SCHRITT 2: Speichern
+    // ============================================================
     console.log("  💾 Speichere Bookmark...");
     const saved = await StorageManager.addBookmark(bookmark);
     console.log("  ✅ Bookmark gespeichert:", saved.id);
+
+    // ============================================================
+    // SCHRITT 3: Sortierung durchführen
+    // ============================================================
+    console.log("  📁 Sortiere Bookmark...");
+    await sortNewBookmark(saved);
 
     // Wenn noch nicht klassifiziert (vor Bootstrap), triggere Klassifikation im Hintergrund
     if (!bootstrapComplete) {
@@ -439,14 +537,17 @@ async function saveBookmark(bookmark) {
   console.log("  🔗 URL:", bookmark.url);
 
   try {
-    // Check für Duplikate
+    // ============================================================
+    // SCHRITT 1: Duplikat-Prüfung
+    // ============================================================
     console.log("  🔍 Prüfe auf Duplikate...");
-    const existing = await StorageManager.getBookmarkByNormalizedUrl(
-      StorageManager.normalizeUrl(bookmark.url)
+    const duplicateCheck = await checkAndHandleDuplicates(
+      bookmark.url,
+      bookmark
     );
 
-    if (existing) {
-      console.log("  ⚠️ Duplikat gefunden:", existing.id);
+    if (duplicateCheck.isDuplicate) {
+      console.log("  ⚠️ Duplikat gefunden:", duplicateCheck.existing.id);
       throw new Error("Duplikat erkannt");
     }
 
@@ -466,10 +567,6 @@ async function saveBookmark(bookmark) {
         "  🤖 Bootstrap abgeschlossen - nutze KI für Klassifikation..."
       );
 
-      const ClassificationService = (
-        await import("./services/classification.js")
-      ).default;
-
       const classification = await ClassificationService.classify({
         title: bookmark.title || "Untitled",
         description: bookmark.description || "",
@@ -481,14 +578,6 @@ async function saveBookmark(bookmark) {
       if (bookmark.content) {
         console.log("  📝 Erstelle Seitenzusammenfassung...");
         try {
-          const aiModule = await import("./types/ai.js");
-          const {
-            checkCanCreateSession,
-            createLanguageModelSession,
-            summarizeWithAI,
-            safeDestroySession,
-          } = aiModule;
-
           if (await checkCanCreateSession()) {
             const session = await createLanguageModelSession();
             if (session) {
@@ -522,14 +611,130 @@ async function saveBookmark(bookmark) {
       );
     }
 
-    // Speichern
+    // ============================================================
+    // SCHRITT 2: Speichern
+    // ============================================================
     console.log("  💾 Speichere in IndexedDB...");
     const saved = await StorageManager.addBookmark(finalBookmark);
     console.log("  ✅ Gespeichert mit ID:", saved.id);
+
+    // ============================================================
+    // SCHRITT 3: Sortierung durchführen
+    // ============================================================
+    console.log("  📁 Sortiere Bookmark...");
+    await sortNewBookmark(saved);
+
     return saved;
   } catch (error) {
     console.error("  ❌ Fehler in saveBookmark():", error);
     throw error;
+  }
+}
+
+// ============================================================
+// Hilfsfunktionen für Duplikat-Prüfung und Sortierung
+// ============================================================
+
+/**
+ * Prüfe auf Duplikate und handle diese
+ * @param {string} url - Zu prüfende URL
+ * @param {Object} newBookmarkData - Daten des neuen Bookmarks
+ * @returns {Promise<Object>} { isDuplicate: boolean, existing?: Object }
+ */
+async function checkAndHandleDuplicates(url, newBookmarkData) {
+  console.log("    🔎 Prüfe auf exakte URL-Duplikate...");
+
+  // Exakte URL-Prüfung
+  const existing = await StorageManager.getBookmarkByNormalizedUrl(
+    StorageManager.normalizeUrl(url)
+  );
+
+  if (existing) {
+    console.log(`    ❌ Exaktes Duplikat gefunden - URL existiert bereits`);
+    return {
+      isDuplicate: true,
+      existing,
+      type: "exact",
+    };
+  }
+
+  // Ähnliche Bookmarks finden (Levenshtein Distance)
+  console.log("    🔎 Prüfe auf ähnliche Bookmarks...");
+  const allBookmarks = await StorageManager.getAllBookmarks();
+  const threshold = 0.85;
+
+  for (const bookmark of allBookmarks) {
+    const similarity = calculateSimilarity(
+      { url, title: newBookmarkData.title },
+      bookmark
+    );
+
+    if (similarity >= threshold) {
+      console.log(
+        `    ⚠️ Ähnliches Bookmark gefunden: "${bookmark.title}" (${(
+          similarity * 100
+        ).toFixed(1)}% ähnlich)`
+      );
+
+      // Speichere als ausstehende Duplikat-Überprüfung
+      await StorageManager.recordDuplicate(bookmark.id, url, similarity);
+
+      return {
+        isDuplicate: false, // Kein exaktes Duplikat, nur ähnlich
+        similar: bookmark,
+        similarity,
+        type: "similar",
+      };
+    }
+  }
+
+  console.log("    ✅ Keine Duplikate gefunden");
+  return {
+    isDuplicate: false,
+  };
+}
+
+/**
+ * Sortiere neuen Bookmark in richtige Chrome-Folder
+ * Falls Kategorie bekannt ist, verschiebe in entsprechende Chrome-Folder
+ * @param {Object} bookmark - Gespeichertes Bookmark mit Kategorie
+ */
+async function sortNewBookmark(bookmark) {
+  try {
+    if (!bookmark.category || bookmark.category === "Uncategorized") {
+      console.log("    ⏭️ Keine Kategorie - Sortierung übersprungen");
+      return;
+    }
+
+    // Prüfe ob es Chrome Bookmark ID gibt
+    if (!bookmark.chromeId) {
+      console.log("    ℹ️ Kein Chrome Bookmark - nur in IndexedDB gespeichert");
+      return;
+    }
+
+    console.log(`    📁 Versuche zu sortieren in: ${bookmark.category}`);
+
+    // Hole oder erstelle Kategorie-Ordner
+    const categoryFolderId = await BootstrapService.getOrCreateBookmarkFolder(
+      bookmark.category
+    );
+
+    if (!categoryFolderId) {
+      console.log(`    ⚠️ Konnte Ordner nicht erstellen/finden`);
+      return;
+    }
+
+    // Verschiebe Bookmark in Kategorie-Ordner
+    try {
+      await chrome.bookmarks.move(bookmark.chromeId, {
+        parentId: categoryFolderId,
+      });
+      console.log(`    ✅ Bookmark verschoben → ${bookmark.category}`);
+    } catch (error) {
+      console.warn(`    ⚠️ Verschiebung fehlgeschlagen:`, error.message);
+    }
+  } catch (error) {
+    console.warn("    ⚠️ Sortierung fehlgeschlagen:", error);
   }
 }
 
@@ -633,3 +838,80 @@ function levenshteinDistance(a, b) {
 
 // Periodische Duplikat-Detection (optional)
 // setInterval(detectDuplicatesBackground, 60 * 60 * 1000); // Every hour
+
+// ============================================================
+// Omnibox - Suche nach Bookmarks in der Adressleiste
+// ============================================================
+
+// Input-Handler: Wird bei jeder Eingabe aufgerufen
+chrome.omnibox.onInputChanged.addListener(async (text, suggest) => {
+  console.log("\n🔍 Omnibox Input:", text);
+
+  if (!text || text.trim().length < 2) {
+    suggest([]);
+    return;
+  }
+
+  try {
+    const bookmarks = await StorageManager.getAllBookmarks();
+    const query = text.toLowerCase();
+
+    // Suche in Title, URL, Category, Tags und Summary
+    const results = bookmarks.filter((b) => {
+      const titleMatch = b.title?.toLowerCase().includes(query);
+      const urlMatch = b.url?.toLowerCase().includes(query);
+      const categoryMatch = b.category?.toLowerCase().includes(query);
+      const tagsMatch = b.tags?.some((t) => t.toLowerCase().includes(query));
+      const summaryMatch = b.summary?.toLowerCase().includes(query);
+
+      return (
+        titleMatch || urlMatch || categoryMatch || tagsMatch || summaryMatch
+      );
+    });
+
+    // Begrenzen auf 10 Ergebnisse
+    const suggestions = results.slice(0, 10).map((b) => ({
+      content: b.url, // URL wird beim Click geöffnet
+      description: `<dim>[${b.category}]</dim> ${b.title}`,
+    }));
+
+    console.log(`  ✅ ${suggestions.length} Ergebnisse gefunden`);
+    suggest(suggestions);
+  } catch (error) {
+    console.error("  ❌ Omnibox-Fehler:", error);
+  }
+});
+
+// Enter-Handler: Wird aufgerufen wenn Benutzer Enter drückt
+chrome.omnibox.onInputEntered.addListener((url, disposition) => {
+  console.log("\n🌐 Omnibox Navigate:", url);
+  console.log("  Disposition:", disposition);
+
+  if (url) {
+    // Öffne URL im neuen/aktuellen Tab
+    switch (disposition) {
+      case "currentTab":
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs[0]) {
+            chrome.tabs.update(tabs[0].id, { url });
+            console.log("  ✅ URL in aktuellem Tab geöffnet");
+          }
+        });
+        break;
+      case "newForegroundTab":
+      case "newBackgroundTab":
+      default:
+        chrome.tabs.create({
+          url,
+          active: disposition === "newForegroundTab",
+        });
+        console.log("  ✅ URL in neuem Tab geöffnet");
+        break;
+    }
+  }
+});
+
+// Cancel-Handler: Wird aufgerufen wenn Benutzer Suche abbricht
+chrome.omnibox.onInputCancelled.addListener(() => {
+  console.log("\n❌ Omnibox cancelled");
+});

@@ -338,6 +338,9 @@ const app = {
         setTimeout(() => {
           this.init();
         }, 2000);
+      } else if (result.configured === false) {
+        // Chrome ist nicht konfiguriert - zeige Dialog mit Optionen
+        this.showConfigurationDialog(result);
       } else {
         this.showError(result.error || "Bootstrap fehlgeschlagen");
       }
@@ -346,6 +349,109 @@ const app = {
     } finally {
       btn.disabled = false;
     }
+  },
+
+  showConfigurationDialog(result) {
+    // Verberge die Progress Bar
+    const progressSection = document.getElementById("bootstrap-view");
+    if (progressSection) {
+      progressSection.style.display = "none";
+    }
+
+    const dialog = document.createElement("div");
+    dialog.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    `;
+
+    const content = document.createElement("div");
+    content.style.cssText = `
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 600px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    `;
+
+    content.innerHTML = `
+      <h2 style="margin-top: 0; color: #333;">⚙️ Chrome Konfiguration erforderlich</h2>
+      <p style="color: #666; line-height: 1.6;">
+        Dein Browser benötigt die Prompt API (Gemini Nano) Konfiguration.
+        Du kannst entweder:
+      </p>
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin-top: 0; color: #333;">Option 1: Chrome konfigurieren</h4>
+        <p style="margin: 0; color: #666; font-size: 13px;">
+          Aktiviere Prompt API und lade Gemini Nano herunter
+        </p>
+      </div>
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin-top: 0; color: #333;">Option 2: Ollama/LM Studio nutzen</h4>
+        <p style="margin: 0; color: #666; font-size: 13px;">
+          Wechsle zu einem lokalen AI Provider in den Einstellungen
+        </p>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 30px;">
+        <button id="btn-configure-chrome" style="
+          flex: 1;
+          padding: 12px;
+          background: #667eea;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 600;
+        ">🔧 Chrome konfigurieren</button>
+        <button id="btn-use-alternative" style="
+          flex: 1;
+          padding: 12px;
+          background: #10b981;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 600;
+        ">⚙️ Provider wechseln</button>
+      </div>
+    `;
+
+    dialog.appendChild(content);
+    document.body.appendChild(dialog);
+
+    document
+      .getElementById("btn-configure-chrome")
+      .addEventListener("click", () => {
+        // Öffne alle Chrome-Flags in neuen Tabs
+        chrome.tabs.create({
+          url: "chrome://flags/#prompt-api-for-gemini-nano",
+        });
+        chrome.tabs.create({
+          url: "chrome://components",
+        });
+        chrome.tabs.create({
+          url: "chrome://flags/#optimization-guide-on-device-model",
+        });
+        dialog.remove();
+        // Zeige Instructions
+        if (progressSection) {
+          progressSection.style.display = "block";
+        }
+      });
+
+    document
+      .getElementById("btn-use-alternative")
+      .addEventListener("click", () => {
+        chrome.runtime.openOptionsPage();
+        dialog.remove();
+      });
   },
 
   updateBootstrapProgress(progress) {

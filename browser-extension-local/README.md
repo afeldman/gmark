@@ -17,8 +17,16 @@ Eine Chrome Extension für intelligente Bookmark-Verwaltung komplett im Browser 
 ### 📝 Zusammenfassung
 
 - Extrahiere Seiten-Metadaten (Titel, Beschreibung, Keywords)
-- AI-generierte Zusammenfassungen mit Prompt API
+- AI-generierte Zusammenfassungen mit Prompt API (3-5 Punkte)
 - Speichere relevante Inhalte lokal
+
+### 🔎 Omnibox-Suche
+
+- **Schnelle Suche direkt in der Adressleiste**
+- Suche nach: Titel, URL, Kategorie, Tags, Zusammenfassung
+- Keyword: `gm ` eingeben und suchen
+- Echtzeit-Ergebnisse mit Kategorieansicht
+- Öffne URL in aktuellem oder neuem Tab
 
 ### 🔍 Duplikat-Erkennung
 
@@ -98,6 +106,32 @@ macOS: Cmd + Shift + B
 Windows/Linux: Ctrl + Shift + B
 ```
 
+### Bookmarks mit Omnibox suchen
+
+**So funktioniert's:**
+
+```
+1. Tippe in die Adressleiste: gm
+2. Schreibe Suchbegriff: gm python
+3. Ergebnisse werden angezeigt (Titel, Kategorie)
+4. Wähle ein Ergebnis mit Pfeiltasten
+5. Drücke Enter → URL wird geöffnet
+```
+
+**Suchmöglichkeiten:**
+
+- Nach Titel suchen: `gm learn`
+- Nach URL suchen: `gm github.com`
+- Nach Kategorie suchen: `gm Development`
+- Nach Tags suchen: `gm tutorial`
+- Nach Zusammenfassung suchen: `gm api`
+
+**Öffnen in neuem Tab:**
+
+- macOS: `⌘ + Enter`
+- Windows/Linux: `Ctrl + Enter`
+- Hintergrund: `⌘/Ctrl + Shift + Enter`
+
 ### Duplikate verwalten
 
 ```
@@ -131,13 +165,21 @@ Windows/Linux: Ctrl + Shift + B
 browser-extension-local/
 ├── manifest.json                 # Manifest V3
 ├── src/
-│   ├── background.js             # Service Worker
+│   ├── background.js             # Service Worker + Omnibox
 │   ├── content.js                # Seiten-Inhalt extrahieren
 │   ├── services/
+│   │   ├── bootstrap.js          # Bootstrap & Migration
 │   │   ├── classification.js      # KI-Klassifikation
 │   │   └── duplicates.js          # Duplikat-Erkennung
 │   ├── utils/
-│   │   └── storage.js             # IndexedDB Manager
+│   │   ├── storage.js             # IndexedDB Manager
+│   │   ├── storage-optimizer.js   # Speicher-Optimierung
+│   │   ├── usage.js               # Token-Quota Tracking
+│   │   └── yaml-parser.js         # YAML Parser
+│   ├── types/
+│   │   └── ai.js                  # Prompt API Wrappers
+│   ├── config/
+│   │   └── categories.yml         # Kategorien-Konfiguration
 │   └── ui/
 │       ├── popup.html              # Popup Interface
 │       ├── popup.js                # Popup Logic
@@ -259,17 +301,43 @@ npm run test:e2e
 - [x] Smart Merge Logic
 - [x] Conflict Resolution
 
-### 🟡 Phase 4: UI & UX
+### ✅ Phase 4: Bootstrap & Migration
 
-- [x] Popup Interface
+- [x] Chrome Bookmarks Import
+- [x] URL Reachability Check (5 parallel)
+- [x] AI Classification (3 parallel per 10-batch)
+- [x] Parallel Processing (10er-Batches)
+- [x] Auto-Deduplication
+- [x] Empty Folder Cleanup
+- [x] **Resumable Progress** (continues from last batch)
+- [x] **Progress Persistence** (saves to Storage after each batch)
+- [x] **Bootstrapped Flag** (marks AI-processed bookmarks)
+
+### ✅ Phase 5: Storage & Performance
+
+- [x] Storage Quota Tracking
+- [x] Automatic Cleanup (Cache, Duplicates)
+- [x] Content Optimization
+- [x] Parallel Operations
+- [x] Token Quota System
+
+### ✅ Phase 6: Search & Discovery
+
+- [x] Omnibox Integration
+- [x] Real-time Search
+- [x] Multi-field Search
+- [x] Quick Navigation
+
+### 🟡 Phase 7: UI & UX
+
 - [ ] Dashboard (WIP)
 - [ ] Duplicate Manager (WIP)
 - [ ] Settings Page (WIP)
 
-### 🟡 Phase 5: Advanced Features
+### 🟡 Phase 8: Advanced Features
 
 - [ ] Folder Management
-- [ ] Search & Filter
+- [ ] Filter & Sort
 - [ ] Batch Operations
 - [ ] CSV Export
 - [ ] Statistics & Analytics
@@ -357,5 +425,14 @@ Bugs, Vorschläge oder Improvements? Issues und PRs willkommen!
 ---
 
 **Zuletzt aktualisiert**: 19. Dezember 2025
-**Status**: Phase 1-3 Complete, Phase 4 In Progress
+**Status**: Phase 1-6 Complete, Phase 7-8 In Progress
 **Version**: 1.0.0-beta
+
+**Neue Features in dieser Version:**
+
+- ✨ Omnibox-Suche direkt in der Adressleiste
+- ✨ Automatische Seitenzusammenfassung mit KI
+- ✨ Bootstrap mit paralleler Verarbeitung
+- ✨ Storage-Optimierung und Quota-Tracking
+- ✨ Token-Quota System für KI-Kosten
+- ✨ Konfigurierbare Kategorien in YAML

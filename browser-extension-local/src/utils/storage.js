@@ -358,6 +358,18 @@ export class StorageManager {
     });
   }
 
+  async deleteSetting(key) {
+    const db = await this.getDB();
+    const tx = db.transaction(["settings"], "readwrite");
+    const store = tx.objectStore("settings");
+
+    return new Promise((resolve, reject) => {
+      const request = store.delete(key);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(true);
+    });
+  }
+
   // Utility: URL Normalization
   normalizeUrl(url) {
     try {

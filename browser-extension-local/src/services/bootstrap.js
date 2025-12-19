@@ -1,16 +1,25 @@
 /**
- * Bootstrap Service
+ * Bootstrap Service - URL-für-URL Verarbeitung mit KI
  *
- * Migriert bestehende Chrome Bookmarks in GMARK:
- * 1. Liest alle Chrome Bookmarks
- * 2. Klassifiziert diese
- * 3. Speichert in IndexedDB
- * 4. Reorganisiert Chrome Bookmarks in Kategorien-Ordner
- * 5. Tracked Progress
+ * Workflow:
+ * 1. Prompt API Check → Abbruch bei Fehler mit Hilfestellung
+ * 2. Für jede URL einzeln:
+ *    - Prompt API Check vor Verarbeitung
+ *    - Erreichbar? → Titel, Seite laden, KI-Zusammenfassung, KI-Klassifikation → Kategorie-Ordner
+ *    - Nicht erreichbar? → "not_responding" Ordner
+ *    - Tag "ai: true" auf jede verarbeitete URL
+ * 3. Resume nach Neustart bei nächster unverarbeiteter URL
+ * 4. Nach Bootstrap: Automatische KI-Klassifikation für neue Links
  */
 
 import StorageManager from "../utils/storage.js";
 import ClassificationService from "./classification.js";
+import {
+  checkCanCreateSession,
+  createLanguageModelSession,
+  summarizeWithAI,
+  safeDestroySession,
+} from "../types/ai.js";
 
 export class BootstrapService {
   constructor() {
@@ -20,15 +29,400 @@ export class BootstrapService {
   }
 
   /**
-   * Starte Bootstrap-Prozess
+   * Prüfe Chrome Konfiguration für Prompt API
+   * @returns {Promise<{configured: boolean, issues: string[], steps: string[], alert: string}>}
+   */
+  async checkChromeConfiguration() {
+    console.log("\n🔍 Prüfe Chrome Konfiguration für Prompt API...");
+
+    const issues = [];
+    const solutions = [];
+
+    // ============================================================
+    // 1. Prüfe Chrome Version
+    // ============================================================
+    console.log("  📌 Prüfe Chrome Version...");
+    const userAgent = navigator.userAgent;
+    const chromeMatch = userAgent.match(/Chrome\/(\d+)/);
+    const chromeVersion = chromeMatch ? parseInt(chromeMatch[1]) : 0;
+
+    console.log(`    Chrome Version: ${chromeVersion}`);
+
+    if (chromeVersion < 128) {
+      issues.push(`Chrome Version zu alt (${chromeVersion})`);
+      solutions.push(
+        "1️⃣ Chrome aktualisieren:\n   • Menu → Einstellungen → Über Chrome\n   • Chrome wird automatisch aktualisiert\n   • Browser neu starten"
+      );
+    } else {
+      console.log(`    ✅ Chrome ${chromeVersion} ist kompatibel`);
+    }
+
+    // ============================================================
+    // 2. Prüfe Prompt API Flag
+    // ============================================================
+    console.log("  📌 Prüfe Prompt API Flag...");
+    const promptAPIAvailable = await this.checkPromptAPIFlag();
+    console.log(
+      `    Prompt API Flag: ${
+        promptAPIAvailable ? "✅ Aktiviert" : "❌ Deaktiviert"
+      }`
+    );
+
+    if (!promptAPIAvailable) {
+      issues.push("Prompt API Flag nicht aktiviert");
+      solutions.push(
+        "2️⃣ Aktiviere Prompt API Flag:\n   • chrome://flags/#prompt-api-for-gemini-nano in URL-Leiste eingeben\n   • Dropdown auf 'Enabled' setzen\n   • Browser neu starten"
+      );
+    }
+
+    // ============================================================
+    // 3. Prüfe Gemini Nano Download
+    // ============================================================
+    console.log("  📌 Prüfe Gemini Nano Status...");
+    const geminiStatus = await this.checkGeminiNanoStatus();
+    console.log(`    Gemini Nano Status: ${geminiStatus}`);
+
+    if (geminiStatus !== "downloaded") {
+      issues.push(
+        `Gemini Nano nicht heruntergeladen (Status: ${geminiStatus})`
+      );
+      solutions.push(
+        "3️⃣ Lade Gemini Nano herunter:\n   • chrome://components in URL-Leiste eingeben\n   • Suche nach 'Optimization Guide On Device Model'\n   • Klicke auf 'Check for update'\n   • Warte bis Download abgeschlossen ist (5-10 Minuten)"
+      );
+    } else {
+      console.log("    ✅ Gemini Nano heruntergeladen");
+    }
+
+    // ============================================================
+    // 4. Prüfe Optimization Guide Flag
+    // ============================================================
+    console.log("  📌 Prüfe Optimization Guide Flag...");
+    const optimizationGuideAvailable = await this.checkOptimizationGuideFlag();
+    console.log(
+      `    Optimization Guide Flag: ${
+        optimizationGuideAvailable ? "✅ Aktiviert" : "❌ Deaktiviert"
+      }`
+    );
+
+    if (!optimizationGuideAvailable) {
+      issues.push("Optimization Guide On Device Model nicht aktiviert");
+      solutions.push(
+        "4️⃣ Aktiviere Optimization Guide Flag:\n   • chrome://flags/#optimization-guide-on-device-model in URL-Leiste eingeben\n   • Dropdown auf 'Enabled BypassPerfRequirement' setzen\n   • Browser neu starten"
+      );
+    }
+
+    // ============================================================
+    // Zusammenfassung
+    // ============================================================
+    const configured = issues.length === 0;
+
+    if (configured) {
+      console.log("\n✅ Alle Chrome-Einstellungen korrekt konfiguriert!");
+      return {
+        configured: true,
+        issues: [],
+        steps: [],
+        alert: `✅ GMARK ist einsatzbereit!
+
+Alle Chrome-Einstellungen sind korrekt konfiguriert:
+• Chrome Version: ${chromeVersion}+ ✅
+• Prompt API Flag: Aktiviert ✅
+• Gemini Nano: Heruntergeladen ✅
+• Optimization Guide: Aktiviert ✅
+
+Bootstrap kann jetzt gestartet werden!`,
+      };
+    } else {
+      console.warn("\n⚠️ Chrome-Konfiguration unvollständig");
+      console.warn("Folgende Probleme müssen behoben werden:");
+      issues.forEach((issue) => console.warn(`  • ${issue}`));
+
+      const alertMessage = `⚠️ GMARK - Chrome Konfiguration erforderlich
+
+Folgende Einstellungen sind erforderlich:
+
+${solutions.map((s) => `${s}\n`).join("\n")}
+Nachdem alle Schritte durchgeführt wurden:
+✓ Browser vollständig neu starten (alle Tabs schließen)
+✓ Extension neu laden (chrome://extensions)
+✓ Bootstrap erneut starten
+
+Aktuelle Status:
+${issues.map((i) => `❌ ${i}`).join("\n")}`;
+
+      // Biete automatische Konfiguration an
+      if (typeof confirm === "function") {
+        const userChoice = confirm(
+          `⚠️ Chrome-Konfiguration erforderlich\n\n${issues.join(
+            "\n"
+          )}\n\n✅ Möchtest du die Konfigurationsseiten automatisch öffnen?\n\n(OK = Ja | Abbrechen = Nein)`
+        );
+
+        if (userChoice) {
+          console.log("✅ Öffne Konfigurationsseiten...");
+          // Öffne automatisch alle erforderlichen Seiten
+          await this.openChromeConfigurationPages();
+        }
+      }
+
+      return {
+        configured: false,
+        issues,
+        steps: solutions,
+        alert: alertMessage,
+      };
+    }
+  }
+
+  /**
+   * Öffne automatisch alle erforderlichen Chrome-Konfigurationsseiten
+   */
+  async openChromeConfigurationPages() {
+    console.log("\n🌐 Öffne Chrome-Konfigurationsseiten...");
+
+    const pages = [
+      {
+        url: "chrome://flags/#prompt-api-for-gemini-nano",
+        title: "Prompt API Flag",
+        instruction: "Setze auf 'Enabled'",
+      },
+      {
+        url: "chrome://flags/#optimization-guide-on-device-model",
+        title: "Optimization Guide Flag",
+        instruction: "Setze auf 'Enabled BypassPerfRequirement'",
+      },
+      {
+        url: "chrome://components",
+        title: "Chrome Components",
+        instruction:
+          "Suche 'Optimization Guide On Device Model' und klicke 'Check for update'",
+      },
+    ];
+
+    // Öffne alle Tabs nacheinander mit Verzögerung
+    for (const page of pages) {
+      console.log(`  📱 Öffne: ${page.title}`);
+      chrome.tabs.create({ url: page.url, active: false });
+      // Kleine Verzögerung zwischen Tabs
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
+    console.log("✅ Alle Konfigurationsseiten geöffnet");
+
+    // Zeige Anleitung
+    const instructions = pages
+      .map((p) => `✓ ${p.title}: ${p.instruction}`)
+      .join("\n");
+
+    // Bestimme OS für Launch-Befehle
+    const userAgent = navigator.userAgent;
+    const isWindows = userAgent.includes("Windows");
+    const isMac = userAgent.includes("Mac");
+
+    let launchCommand = "";
+    if (isWindows) {
+      launchCommand = `chrome.exe --enable-features=OptimizationGuideOnDeviceModel,PromptAPIForGeminiNano`;
+    } else if (isMac) {
+      launchCommand = `/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --enable-features=OptimizationGuideOnDeviceModel,PromptAPIForGeminiNano`;
+    } else {
+      launchCommand = `google-chrome --enable-features=OptimizationGuideOnDeviceModel,PromptAPIForGeminiNano`;
+    }
+
+    const alertMsg = `✅ Chrome-Konfigurationsseiten wurden geöffnet!
+
+📋 Folgende Schritte durchführen:
+${instructions}
+
+⏱️ Warte auf Gemini Nano Download (5-10 Minuten)
+
+Danach:
+1. Chrome vollständig neu starten (alle Tabs schließen)
+2. Diese Extension neu laden (chrome://extensions)
+3. Bootstrap erneut starten
+
+🔧 Alternative (schneller):
+Schließe Chrome komplett und starte es so:
+${launchCommand}
+
+Die Chrome-Tabs sind im Hintergrund geöffnet - schau in die Tab-Leiste!`;
+
+    if (typeof alert === "function") {
+      alert(alertMsg);
+    }
+
+    return {
+      instructions,
+      launchCommand,
+      alert: alertMsg,
+    };
+  }
+
+  /**
+   * Prüfe ob Prompt API Flag vorhanden ist
+   */
+  async checkPromptAPIFlag() {
+    const canCreate = await checkCanCreateSession();
+    return canCreate === true;
+  }
+
+  /**
+   * Prüfe Gemini Nano Download Status
+   */
+  async checkGeminiNanoStatus() {
+    try {
+      const ai = self.ai || globalThis.ai;
+
+      if (!ai?.languageModel) {
+        return "not-available";
+      }
+
+      const status = await ai.languageModel.canCreateTextSession();
+
+      // Status kann sein: "readily", "after-download", "no"
+      if (status === "readily") {
+        return "downloaded";
+      } else if (status === "after-download") {
+        return "downloading";
+      } else {
+        return "not-available";
+      }
+    } catch (error) {
+      console.warn("  ⚠️ Fehler bei Gemini Status Check:", error.message);
+      return "error";
+    }
+  }
+
+  /**
+   * Prüfe Optimization Guide Flag
+   */
+  async checkOptimizationGuideFlag() {
+    try {
+      const ai = self.ai || globalThis.ai;
+      return !!ai?.languageModel;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Prüfe Prompt API Verfügbarkeit
+   * @returns {Promise<{available: boolean, error: string|null, help: string|null}>}
+   */
+  async checkPromptAPIAvailability() {
+    console.log("\n🔍 Prüfe Prompt API Verfügbarkeit...");
+
+    try {
+      const canCreate = await checkCanCreateSession();
+
+      if (!canCreate) {
+        const errorMessage = "❌ Prompt API nicht verfügbar";
+        const helpMessage = `
+⚠️ Mögliche Ursachen und Lösungen:
+
+1. **Chrome Version zu alt**
+   → Mindestens Chrome 128+ erforderlich
+   → Prüfen: chrome://version
+   → Lösung: Chrome aktualisieren
+
+2. **Gemini Nano nicht heruntergeladen**
+   → Prüfen: chrome://components → "Optimization Guide On Device Model"
+   → Lösung: Auf "Check for update" klicken und warten
+
+3. **Prompt API nicht aktiviert**
+   → Prüfen: chrome://flags/#prompt-api-for-gemini-nano
+   → Lösung: Auf "Enabled" setzen und Chrome neu starten
+
+4. **Experimentelle Features deaktiviert**
+   → Prüfen: chrome://flags/#optimization-guide-on-device-model
+   → Lösung: Auf "Enabled BypassPerfRequirement" setzen
+
+5. **Service Worker Kontext**
+   → Die API ist möglicherweise nur in Tab-Kontexten verfügbar
+   → Lösung: Extension neu laden
+
+Nachdem Änderungen vorgenommen wurden:
+→ Chrome neu starten
+→ Extension neu laden
+→ Bootstrap erneut starten
+        `;
+
+        console.error(errorMessage);
+        console.error(helpMessage);
+
+        return {
+          available: false,
+          error: errorMessage,
+          help: helpMessage,
+        };
+      }
+
+      console.log("✅ Prompt API verfügbar und bereit");
+      return {
+        available: true,
+        error: null,
+        help: null,
+      };
+    } catch (error) {
+      console.error("❌ Fehler bei Prompt API Check:", error);
+      return {
+        available: false,
+        error: error.message,
+        help: "Siehe Console für Details. Extension neu laden und erneut versuchen.",
+      };
+    }
+  }
+
+  /**
+   * Starte Bootstrap-Prozess mit Prompt API Check und URL-für-URL Verarbeitung
    * @param {Function} onProgress - Callback für Progress Updates
    * @returns {Promise<Object>} Bootstrap-Ergebnis
    */
   async runBootstrap(onProgress) {
     try {
-      console.log("🚀 Bootstrap startet...");
+      console.log("\n" + "=".repeat(60));
+      console.log("🚀 GMARK Bootstrap startet...");
+      console.log("=".repeat(60) + "\n");
 
-      // 1. Überprüfe ob Bootstrap schon durchgeführt wurde
+      // ============================================================
+      // SCHRITT 1: Prüfe Chrome Konfiguration
+      // ============================================================
+      console.log("Step: Prüfe Chrome Konfiguration...\n");
+      const configCheck = await this.checkChromeConfiguration();
+
+      if (!configCheck.configured) {
+        // console.error("\n Chrome-Konfiguration unvollständig!");
+        // console.error(configCheck.alert);
+
+        return {
+          success: false,
+          error: "Chrome-Konfiguration erforderlich",
+          configured: false,
+          issues: configCheck.issues,
+          steps: configCheck.steps,
+          alert: configCheck.alert,
+        };
+      }
+
+      console.log("✅ Chrome-Konfiguration OK\n");
+
+      // ============================================================
+      // SCHRITT 2: Prompt API Check
+      // ============================================================
+      console.log("Step 2️⃣: Prüfe Prompt API Verfügbarkeit...\n");
+      const apiCheck = await this.checkPromptAPIAvailability();
+
+      if (!apiCheck.available) {
+        return {
+          success: false,
+          error: apiCheck.error,
+          help: apiCheck.help,
+          promptAPIAvailable: false,
+        };
+      }
+
+      // ============================================================
+      // SCHRITT 3: Prüfe ob Bootstrap bereits abgeschlossen
+      // ============================================================
       const bootstrapStatus = await StorageManager.getSetting(
         "bootstrapComplete"
       );
@@ -42,8 +436,10 @@ export class BootstrapService {
         };
       }
 
-      // 2. Lese alle Chrome Bookmarks
-      console.log("📖 Lese Chrome Bookmarks...");
+      // ============================================================
+      // SCHRITT 4: Lade alle Chrome Bookmarks
+      // ============================================================
+      console.log("Step 4️⃣: Lese Chrome Bookmarks...");
       const bookmarks = await this.getAllChromeBookmarks();
       this.bookmarksToProcess = bookmarks.length;
 
@@ -57,190 +453,323 @@ export class BootstrapService {
         };
       }
 
-      console.log(`📊 ${bookmarks.length} Bookmarks zum Klassifizieren`);
+      console.log(`📊 ${bookmarks.length} Bookmarks gefunden`);
 
-      // 3. Erstelle init und notresponding Ordner
-      console.log("📁 Erstelle Sortier-Ordner...");
-      const initFolderId = await this.getOrCreateBookmarkFolder("init");
+      // ============================================================
+      // SCHRITT 5: Erstelle Ordner
+      // ============================================================
+      console.log("\nStep 5️⃣: Erstelle Sortier-Ordner...");
       const notRespondingFolderId = await this.getOrCreateBookmarkFolder(
-        "notresponding"
+        "not_responding"
       );
+      console.log("  ✅ not_responding Ordner bereit");
 
-      // 4. Sortiere Bookmarks in init/notresponding und entferne Duplikate
-      console.log("🔄 Sortiere Bookmarks und entferne Duplikate...");
-      const { initBookmarks, notRespondingBookmarks } =
-        await this.sortAndDeduplicateBookmarks(
-          bookmarks,
-          initFolderId,
-          notRespondingFolderId,
-          onProgress
+      // ============================================================
+      // SCHRITT 6: Resume-Logik - Lade bereits verarbeitete URLs
+      // ============================================================
+      console.log("\nStep 6️⃣: Prüfe auf bereits verarbeitete URLs...");
+      let processedURLs =
+        (await StorageManager.getSetting("bootstrapProcessedURLs")) || [];
+      let processedCount = processedURLs.length;
+
+      if (processedCount > 0) {
+        console.log(
+          `  ⏸️ ${processedCount} URLs bereits verarbeitet - Resume wird fortgesetzt`
         );
-
-      console.log(
-        `✅ Sortiert: ${initBookmarks.length} in 'init', ${notRespondingBookmarks.length} in 'notresponding'`
-      );
-
-      // 5. Verarbeite Bookmarks aus init-Ordner mit KI
-      console.log("🤖 Verarbeite Bookmarks mit KI aus 'init'-Ordner...");
-      const results = await this.processInitBookmarksWithAI(
-        initBookmarks,
-        initFolderId,
-        onProgress
-      );
-
-      console.log(
-        `✅ KI-Verarbeitung abgeschlossen: ${results.success} erfolgreich, ${results.failed} fehlgeschlagen`
-      );
-
-      // 6. Markiere Bootstrap als vollständig
-      await StorageManager.setSetting("bootstrapComplete", true);
-      await StorageManager.setSetting(
-        "bootstrapDate",
-        new Date().toISOString()
-      );
-
-      console.log("✅ Bootstrap abgeschlossen!");
-      console.log(`   Erfolg: ${results.success}`);
-      console.log(`   Fehler: ${results.failed}`);
-      console.log(`   Übersprungen: ${results.skipped}`);
-
-      this.bootstrapComplete = true;
-
-      return {
-        success: true,
-        message: "Bootstrap completed successfully",
-        ...results,
-      };
-    } catch (error) {
-      console.error("❌ Bootstrap-Fehler:", error);
-      return {
-        success: false,
-        error: error.message,
-        bookmarksProcessed: this.bookmarksProcessed,
-      };
-    }
-  }
-
-  /**
-   * Sortiere Bookmarks in init/notresponding und entferne Duplikate
-   */
-  async sortAndDeduplicateBookmarks(
-    bookmarks,
-    initFolderId,
-    notRespondingFolderId,
-    onProgress
-  ) {
-    const initBookmarks = [];
-    const notRespondingBookmarks = [];
-    const seenUrls = new Set();
-    let processed = 0;
-
-    // Filtere Duplikate und Ordner
-    const filteredBookmarks = bookmarks.filter((bookmark) => {
-      // Skip Ordner
-      if (bookmark.children) return false;
-
-      // Prüfe auf Duplikate (normalisierte URL)
-      const normalizedUrl = StorageManager.normalizeUrl(bookmark.url);
-      if (seenUrls.has(normalizedUrl)) {
-        console.log(`🗑️ Duplikat entfernt: ${bookmark.title}`);
-        // Lösche Duplikat aus Chrome Bookmarks (async, aber nicht awaiten)
-        if (bookmark.id) {
-          chrome.bookmarks.remove(bookmark.id).catch(() => {});
-        }
-        return false;
       }
 
-      seenUrls.add(normalizedUrl);
-      return true;
-    });
+      // Filter unverarbeitete Bookmarks
+      const unprocessedBookmarks = bookmarks.filter(
+        (b) => !processedURLs.includes(b.url)
+      );
 
-    // Parallelisiere Reachability-Checks in Batches (max 5 parallel)
-    const BATCH_SIZE = 5;
-    for (let i = 0; i < filteredBookmarks.length; i += BATCH_SIZE) {
-      const batch = filteredBookmarks.slice(i, i + BATCH_SIZE);
       console.log(
-        `⚡ Verarbeite Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(
-          filteredBookmarks.length / BATCH_SIZE
-        )} (${batch.length} URLs)...`
+        `  📋 ${unprocessedBookmarks.length} URLs müssen noch verarbeitet werden`
       );
 
-      // Führe Reachability-Checks parallel durch
-      const results = await Promise.all(
-        batch.map((bookmark) => this.checkUrlReachable(bookmark.url))
-      );
+      // ============================================================
+      // SCHRITT 7: Verarbeite URLs einzeln (URL-für-URL)
+      // ============================================================
+      console.log("\nStep 7️⃣: Starte URL-für-URL Verarbeitung...\n");
+      const results = {
+        success: 0,
+        failed: 0,
+        skipped: 0,
+        notResponding: 0,
+      };
 
-      // Verarbeite Ergebnisse
-      for (let j = 0; j < batch.length; j++) {
-        const bookmark = batch[j];
-        const { reachable: isReachable, title: resolvedTitle } = results[j];
+      for (let i = 0; i < unprocessedBookmarks.length; i++) {
+        const bookmark = unprocessedBookmarks[i];
+        const globalIndex = processedCount + i + 1;
+
+        console.log(
+          `\n[${globalIndex}/${
+            this.bookmarksToProcess
+          }] 🔄 Verarbeite: ${bookmark.title?.substring(0, 60)}`
+        );
+        console.log(`  URL: ${bookmark.url}`);
+
+        // ============================================================
+        // SCHRITT 6.1: Prüfe Prompt API vor jeder URL
+        // ============================================================
+        const apiAvailable = await checkCanCreateSession();
+        if (!apiAvailable) {
+          console.warn(
+            "\n⚠️ Prompt API nicht mehr verfügbar - Bootstrap pausiert"
+          );
+          console.warn(
+            `   ${processedCount + i} von ${
+              this.bookmarksToProcess
+            } URLs verarbeitet`
+          );
+          console.warn("   Extension neu laden um fortzusetzen");
+          return {
+            success: false,
+            error: "Prompt API während Verarbeitung verloren gegangen",
+            help: "Extension neu laden - Bootstrap wird automatisch fortgesetzt",
+            processed: processedCount + i,
+            total: this.bookmarksToProcess,
+          };
+        }
 
         try {
-          if (isReachable) {
-            // Optional: Titel aktualisieren
-            if (resolvedTitle && resolvedTitle !== bookmark.title) {
-              try {
-                await chrome.bookmarks.update(bookmark.id, {
-                  title: resolvedTitle,
-                });
-                bookmark.title = resolvedTitle;
-                console.log(`📝 Titel aktualisiert: ${resolvedTitle}`);
-              } catch (e) {
-                console.warn("⚠️ Konnte Titel nicht aktualisieren:", e);
-              }
-            }
+          // ============================================================
+          // SCHRITT 6.2: Prüfe URL Erreichbarkeit
+          // ============================================================
+          const { reachable, title } = await this.checkUrlReachable(
+            bookmark.url
+          );
 
-            // Verschiebe zu init-Ordner
-            if (bookmark.id && initFolderId) {
-              await chrome.bookmarks.move(bookmark.id, {
-                parentId: initFolderId,
-              });
-            }
-            initBookmarks.push(bookmark);
-            console.log(
-              `✅ [${processed + j + 1}/${filteredBookmarks.length}] ${
-                bookmark.title
-              } → init`
-            );
-          } else {
-            // Verschiebe zu notresponding-Ordner
+          if (!reachable) {
+            // URL nicht erreichbar → in "not_responding"
+            console.log(`  ⚠️ URL nicht erreichbar → not_responding`);
+
             if (bookmark.id && notRespondingFolderId) {
               await chrome.bookmarks.move(bookmark.id, {
                 parentId: notRespondingFolderId,
               });
             }
-            notRespondingBookmarks.push(bookmark);
+
+            results.notResponding++;
+            processedURLs.push(bookmark.url);
+          } else {
+            // URL erreichbar → Verarbeite mit KI
+            console.log(`  ✅ URL erreichbar`);
+
+            // ============================================================
+            // SCHRITT 6.3: Aktualisiere Titel falls vorhanden
+            // ============================================================
+            if (title && bookmark.id) {
+              try {
+                await chrome.bookmarks.update(bookmark.id, { title });
+                console.log(
+                  `  📝 Titel aktualisiert: ${title.substring(0, 50)}`
+                );
+                bookmark.title = title;
+              } catch (error) {
+                console.warn(`  ⚠️ Titel-Update fehlgeschlagen`);
+              }
+            }
+
+            // ============================================================
+            // SCHRITT 6.4: Lade Seiteninhalt
+            // ============================================================
+            console.log(`  📖 Lade Seiteninhalt...`);
+            const pageContent = await this.loadPageContent(bookmark.url);
+
+            // ============================================================
+            // SCHRITT 6.5: Erstelle Zusammenfassung mit KI
+            // ============================================================
+            let summary = "";
+            if (pageContent) {
+              console.log(`  🤖 Erstelle KI-Zusammenfassung...`);
+              const session = await createLanguageModelSession();
+              if (session) {
+                summary =
+                  (await summarizeWithAI(
+                    session,
+                    pageContent,
+                    bookmark.title
+                  )) || "";
+                safeDestroySession(session);
+                console.log(
+                  `  ✅ Zusammenfassung erstellt (${summary.length} Zeichen)`
+                );
+              }
+            }
+
+            // ============================================================
+            // SCHRITT 6.6: Klassifiziere mit KI
+            // ============================================================
+            console.log(`  🏷️ Klassifiziere mit KI...`);
+            const classification = await ClassificationService.classify({
+              title: bookmark.title || "Untitled",
+              description: summary || "",
+              url: bookmark.url,
+            });
+
             console.log(
-              `⚠️ [${processed + j + 1}/${filteredBookmarks.length}] ${
-                bookmark.title
-              } → notresponding`
+              `  ✅ Klassifiziert: ${classification.category} (Confidence: ${classification.confidence})`
             );
+
+            // ============================================================
+            // SCHRITT 6.7: Speichere in IndexedDB mit ai:true Tag
+            // ============================================================
+            const savedBookmark = await StorageManager.addBookmark({
+              url: bookmark.url,
+              title: bookmark.title || "Untitled",
+              category: classification.category,
+              confidence: classification.confidence,
+              tags: classification.tags,
+              summary: summary || classification.summary,
+              color: classification.color,
+              content: pageContent || "",
+              method: "bootstrap-ai-classification",
+              chromeId: bookmark.id,
+              migratedAt: Date.now(),
+              ai: true, // ← AI-Verarbeitung durchgeführt
+            });
+
+            console.log(
+              `  💾 In IndexedDB gespeichert (ID: ${savedBookmark.id?.substring(
+                0,
+                8
+              )}...)`
+            );
+
+            // ============================================================
+            // SCHRITT 6.8: Verschiebe in Kategorien-Ordner
+            // ============================================================
+            const categoryFolderId = await this.getOrCreateBookmarkFolder(
+              classification.category
+            );
+
+            if (bookmark.id && categoryFolderId) {
+              await chrome.bookmarks.move(bookmark.id, {
+                parentId: categoryFolderId,
+              });
+              console.log(`  📁 Verschoben → ${classification.category}`);
+            }
+
+            results.success++;
+            processedURLs.push(bookmark.url);
           }
+
+          processedCount++;
+          this.bookmarksProcessed++;
+
+          // ============================================================
+          // SCHRITT 6.9: Speichere Fortschritt nach jeder URL
+          // ============================================================
+          await StorageManager.setSetting(
+            "bootstrapProcessedURLs",
+            processedURLs
+          );
+
+          // Progress-Update
+          if (onProgress) {
+            onProgress({
+              processed: processedCount,
+              total: this.bookmarksToProcess,
+              success: results.success,
+              failed: results.failed,
+              skipped: results.skipped,
+              notResponding: results.notResponding,
+              percentage: Math.round(
+                (processedCount / this.bookmarksToProcess) * 100
+              ),
+              currentURL: bookmark.url,
+              currentTitle: bookmark.title,
+            });
+          }
+
+          // Kleine Pause zwischen URLs um System zu schonen
+          await new Promise((r) => setTimeout(r, 200));
         } catch (error) {
-          console.error(`❌ Fehler bei ${bookmark.title}:`, error);
+          console.error(`  ❌ Fehler bei ${bookmark.url}:`, error.message);
+          results.failed++;
+          processedURLs.push(bookmark.url); // Als verarbeitet markieren um Endlosschleife zu vermeiden
+          await StorageManager.setSetting(
+            "bootstrapProcessedURLs",
+            processedURLs
+          );
         }
       }
 
-      processed += batch.length;
+      // ============================================================
+      // SCHRITT 8: Cleanup nach erfolgreicher Verarbeitung
+      // ============================================================
+      console.log("\nStep 8️⃣: Cleanup und Finalisierung...");
 
-      // Progress-Update
-      if (onProgress) {
-        onProgress({
-          processed,
-          total: filteredBookmarks.length,
-          success: initBookmarks.length,
-          failed: 0,
-          skipped: notRespondingBookmarks.length,
-          percentage: Math.round((processed / filteredBookmarks.length) * 100),
-        });
-      }
+      // Lösche Fortschritts-Marker
+      await StorageManager.deleteSetting("bootstrapProcessedURLs");
+      console.log("  🧹 Fortschritts-Marker gelöscht");
+
+      // Markiere Bootstrap als abgeschlossen
+      await StorageManager.setSetting("bootstrapComplete", true);
+      await StorageManager.setSetting(
+        "bootstrapDate",
+        new Date().toISOString()
+      );
+      console.log("  ✅ Bootstrap als abgeschlossen markiert");
+
+      // Bereinige leere Ordner
+      await this.deleteEmptyBookmarkFolders();
+      console.log("  🧹 Leere Ordner bereinigt");
+
+      console.log("\n" + "=".repeat(60));
+      console.log("🎉 Bootstrap erfolgreich abgeschlossen!");
+      console.log(`   ✅ ${results.success} erfolgreich klassifiziert`);
+      console.log(`   ⚠️ ${results.notResponding} nicht erreichbar`);
+      console.log(`   ❌ ${results.failed} Fehler`);
+      console.log("=".repeat(60));
+
+      return {
+        success: true,
+        ...results,
+        total: this.bookmarksToProcess,
+      };
+    } catch (error) {
+      console.error("\n❌ Bootstrap fehlgeschlagen:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
     }
-
-    return { initBookmarks, notRespondingBookmarks };
   }
 
   /**
-   * Prüfe ob eine URL erreichbar ist
+   * Lade Seiteninhalt über Hintergrund-Tab
+   */
+  async loadPageContent(url) {
+    try {
+      const tab = await chrome.tabs.create({ url, active: false });
+
+      // Warte bis Seite geladen ist
+      await new Promise((r) => setTimeout(r, 2500));
+
+      const [{ result }] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          // Extrahiere Text-Content
+          return document.body.innerText;
+        },
+      });
+
+      // Tab schließen
+      try {
+        await chrome.tabs.remove(tab.id);
+      } catch {}
+
+      return typeof result === "string" ? result.substring(0, 5000) : "";
+    } catch (error) {
+      console.warn("    ⚠️ Content-Laden fehlgeschlagen:", error.message);
+      return "";
+    }
+  }
+
+  /**
+   * Prüfe ob eine URL erreichbar ist und hole Titel
    */
   async checkUrlReachable(url) {
     // Versuche schnell per HEAD (kein Titel verfügbar)
@@ -268,10 +797,9 @@ export class BootstrapService {
    */
   async resolvePageTitle(url) {
     try {
-      console.log("🔎 Ermittle Titel für:", url);
       const tab = await chrome.tabs.create({ url, active: false });
       // Warte kurz bis Seite lädt
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1500));
 
       const [{ result: title }] = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -283,140 +811,13 @@ export class BootstrapService {
         await chrome.tabs.remove(tab.id);
       } catch {}
 
-      console.log("  ✅ Titel ermittelt:", title);
       return typeof title === "string" && title.trim().length > 0
         ? title.trim()
         : null;
     } catch (error) {
-      console.warn("⚠️ Konnte Titel nicht ermitteln:", error);
+      console.warn("    ⚠️ Konnte Titel nicht ermitteln:", error.message);
       return null;
     }
-  }
-
-  /**
-   * Verarbeite Bookmarks aus init-Ordner mit KI
-   */
-  async processInitBookmarksWithAI(initBookmarks, initFolderId, onProgress) {
-    const results = {
-      success: 0,
-      failed: 0,
-      skipped: 0,
-      bookmarks: [],
-    };
-
-    // Parallelisiere KI-Klassifikation in Batches (max 3 parallel, KI ist I/O-bound)
-    const BATCH_SIZE = 3;
-    let processedCount = 0;
-
-    for (let i = 0; i < initBookmarks.length; i += BATCH_SIZE) {
-      const batch = initBookmarks.slice(i, i + BATCH_SIZE);
-      console.log(
-        `⚡ Klassifiziere Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(
-          initBookmarks.length / BATCH_SIZE
-        )} (${batch.length} Bookmarks)...`
-      );
-
-      // Führe Klassifikationen parallel durch
-      const classificationPromises = batch.map((bookmark) =>
-        ClassificationService.classify({
-          title: bookmark.title || "Untitled",
-          description: bookmark.tags?.join(", ") || "",
-          url: bookmark.url,
-        }).then((classification) => ({
-          bookmark,
-          classification,
-        }))
-      );
-
-      const classificationResults = await Promise.all(classificationPromises);
-
-      // Verarbeite Klassifikationsergebnisse
-      for (const { bookmark, classification } of classificationResults) {
-        try {
-          // Skip bereits gespeicherte Bookmarks
-          const existing = await StorageManager.getBookmarkByNormalizedUrl(
-            StorageManager.normalizeUrl(bookmark.url)
-          );
-          if (existing) {
-            results.skipped++;
-            processedCount++;
-            this.bookmarksProcessed++;
-            continue;
-          }
-
-          // Speichere in DB
-          const savedBookmark = await StorageManager.addBookmark({
-            url: bookmark.url,
-            title: bookmark.title || "Untitled",
-            category: classification.category,
-            confidence: classification.confidence,
-            tags: classification.tags,
-            summary: classification.summary,
-            color: classification.color,
-            method: "bootstrap-classification",
-            chromeId: bookmark.id,
-            migratedAt: Date.now(),
-          });
-
-          // Verschiebe aus init-Ordner in Kategorien-Ordner (Root)
-          const categoryFolderId = await this.getOrCreateBookmarkFolder(
-            classification.category
-          );
-          if (bookmark.id && categoryFolderId) {
-            await chrome.bookmarks.move(bookmark.id, {
-              parentId: categoryFolderId,
-            });
-            console.log(
-              `📁 Verschoben: ${bookmark.title} → ${classification.category}`
-            );
-          }
-
-          results.success++;
-          results.bookmarks.push(savedBookmark);
-
-          console.log(
-            `✅ [${processedCount + 1}/${initBookmarks.length}] ${
-              bookmark.title
-            } → ${classification.category}`
-          );
-        } catch (error) {
-          console.error(`❌ Fehler bei ${bookmark.title}:`, error);
-          results.failed++;
-        }
-
-        processedCount++;
-        this.bookmarksProcessed++;
-      }
-
-      // Progress-Update
-      if (onProgress) {
-        onProgress({
-          processed: this.bookmarksProcessed,
-          total: this.bookmarksToProcess,
-          success: results.success,
-          failed: results.failed,
-          skipped: results.skipped,
-          percentage: Math.round(
-            (this.bookmarksProcessed / this.bookmarksToProcess) * 100
-          ),
-        });
-      }
-    }
-
-    // Lösche leeren init-Ordner wenn alle verarbeitet wurden
-    if (results.success > 0 && initFolderId) {
-      try {
-        await chrome.bookmarks.remove(initFolderId);
-        console.log("🗑️ Init-Ordner gelöscht (alle Bookmarks verarbeitet)");
-      } catch (error) {
-        console.warn("⚠️ Konnte init-Ordner nicht löschen:", error);
-      }
-    }
-
-    // Nach Verarbeitung: generelle Bereinigung leerer Ordner
-    await this.deleteEmptyBookmarkFolders();
-
-    return results;
   }
 
   /**
