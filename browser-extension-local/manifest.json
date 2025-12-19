@@ -11,7 +11,6 @@
     "tabs",
     "contextMenus"
   ],
-  "optional_permissions": ["ai"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background.js"

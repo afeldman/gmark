@@ -2,15 +2,19 @@
 
 ## 🎯 Quick Links
 
-**→ [Schnellstart](./EXTENSION_INSTALL.md)** | **→ [Taskfile](./TASKFILE.md)** | **→ [Testing](./TESTING.md)** | **→ [Prompt API](./PROMPT_API.md)**
+**→ [GMARK Local (Neu! 🎉)](./GMARK_LOCAL.md)** | **→ [Schnellstart](./EXTENSION_INSTALL.md)** | **→ [Taskfile](./TASKFILE.md)** | **→ [Testing](./TESTING.md)**
 
 ---
 
 ## 📖 Dokumentations-Struktur
 
+### 🎉 **GMARK Local Edition (NEU!)**
+
+- [**GMARK_LOCAL.md**](./GMARK_LOCAL.md) - Neue Privacy-First Extension (100% Lokal, Offline, Kostenlos)
+
 ### 🚀 **Erste Schritte**
 
-- [**EXTENSION_INSTALL.md**](./EXTENSION_INSTALL.md) - Extension installieren & konfigurieren
+- [**EXTENSION_INSTALL.md**](./EXTENSION_INSTALL.md) - Original Extension installieren & konfigurieren
 - [**LOAD_EXTENSION.md**](./LOAD_EXTENSION.md) - Extension laden & debuggen
 
 ### 🏗️ **Architektur & Implementierung**

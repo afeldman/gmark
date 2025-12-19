@@ -7,6 +7,7 @@ Eine Chrome Extension für intelligente Bookmark-Verwaltung komplett im Browser 
 ## ✨ Features
 
 ### 🤖 Intelligente Klassifikation
+
 - **Prompt API Integration**: Nutze lokale KI (Gemini Nano) für Klassifikation
 - **Pattern-Matching**: Schnelle Fallback-Klassifikation ohne KI
 - **9 Kategorien**: Development, Social, News, Shopping, Education, Entertainment, Documentation, Tools, Other
@@ -14,11 +15,13 @@ Eine Chrome Extension für intelligente Bookmark-Verwaltung komplett im Browser 
 - **Auto-Tagging**: Automatische Tag-Generierung
 
 ### 📝 Zusammenfassung
+
 - Extrahiere Seiten-Metadaten (Titel, Beschreibung, Keywords)
 - AI-generierte Zusammenfassungen mit Prompt API
 - Speichere relevante Inhalte lokal
 
 ### 🔍 Duplikat-Erkennung
+
 - **URL-Normalisierung**: Erkenne unterschiedliche Varianten der gleichen URL
 - **Levenshtein Distance**: Ähnlichkeitsprüfung für Titel und Inhalte
 - **Fuzzy Matching**: Intelligentes Matching trotz Tippfehler
@@ -26,18 +29,21 @@ Eine Chrome Extension für intelligente Bookmark-Verwaltung komplett im Browser 
 - **Auto-Deduplicate**: Automatisches Löschen von hochgradig ähnlichen Bookmarks
 
 ### 💾 Storage
+
 - **IndexedDB**: Lokale Datenbank im Browser
 - **Offline-First**: Alles funktioniert ohne Internet
 - **Export/Import**: JSON & CSV Export
 - **Chrome Sync**: Optional mit Chrome Profile synchronisieren
 
 ### 📊 Dashboard
+
 - Statistiken und Übersichten
 - Duplikat-Management Interface
 - Folder-Hierarchie
 - Bulk-Operationen
 
 ### ⚙️ Einstellungen
+
 - Automatische Klassifikation: Ein/Aus
 - Automatische Duplikat-Erkennung: Ein/Aus
 - Ähnlichkeitsgrenzwert: 0.0 - 1.0 konfigurierbar
@@ -46,6 +52,7 @@ Eine Chrome Extension für intelligente Bookmark-Verwaltung komplett im Browser 
 ## 🚀 Installation
 
 ### Schritt 1: Voraussetzungen
+
 - Chrome/Edge Version 121+ (für Prompt API)
 - Chrome Canary (für beste Unterstützung)
 
@@ -59,7 +66,7 @@ Eine Chrome Extension für intelligente Bookmark-Verwaltung komplett im Browser 
 ### Schritt 3: Prompt API aktivieren (Optional aber empfohlen)
 
 1. **Chrome Canary installieren**: https://www.google.com/chrome/canary/
-2. **Flags öffnen**: 
+2. **Flags öffnen**:
    - `chrome://flags/#optimization-guide-on-device-model` → Enabled
    - `chrome://flags/#prompt-api-for-gemini-nano` → Enabled
 3. **Chrome Canary neu starten**
@@ -70,6 +77,7 @@ Eine Chrome Extension für intelligente Bookmark-Verwaltung komplett im Browser 
 ### Bookmark speichern
 
 **Methode 1: Über Icon**
+
 ```
 1. Klicke GMARK-Icon in der Toolbar
 2. Warte auf Klassifikation (1-2 Sekunden)
@@ -78,11 +86,13 @@ Eine Chrome Extension für intelligente Bookmark-Verwaltung komplett im Browser 
 ```
 
 **Methode 2: Kontextmenü**
+
 ```
 Rechtsklick auf Seite → "In GMARK speichern"
 ```
 
 **Methode 3: Keyboard**
+
 ```
 macOS: Cmd + Shift + B
 Windows/Linux: Ctrl + Shift + B
@@ -140,6 +150,7 @@ browser-extension-local/
 ## 📊 Datenstruktur (IndexedDB)
 
 ### Bookmark
+
 ```javascript
 {
   id: "uuid",
@@ -158,6 +169,7 @@ browser-extension-local/
 ```
 
 ### Duplicate Record
+
 ```javascript
 {
   id: "uuid",
@@ -170,6 +182,7 @@ browser-extension-local/
 ```
 
 ### Classification Cache
+
 ```javascript
 {
   url: "https://...",
@@ -227,29 +240,34 @@ npm run test:e2e
 ## 🚀 Roadmap
 
 ### ✅ Phase 1: Setup
+
 - [x] Manifest V3
 - [x] IndexedDB Schema
 - [x] Basic Storage Manager
 
 ### ✅ Phase 2: Prompt API Services
+
 - [x] Classification Service
 - [x] Pattern-based Fallback
 - [x] Confidence Scoring
 - [x] Tag Generation
 
 ### ✅ Phase 3: Duplicate Detection
+
 - [x] URL Normalization
 - [x] Levenshtein Distance
 - [x] Smart Merge Logic
 - [x] Conflict Resolution
 
 ### 🟡 Phase 4: UI & UX
+
 - [x] Popup Interface
 - [ ] Dashboard (WIP)
 - [ ] Duplicate Manager (WIP)
 - [ ] Settings Page (WIP)
 
 ### 🟡 Phase 5: Advanced Features
+
 - [ ] Folder Management
 - [ ] Search & Filter
 - [ ] Batch Operations
@@ -266,21 +284,22 @@ npm run test:e2e
 ✅ **Open Source**: Code-Audit möglich
 
 ⚠️ **Wichtig**:
+
 - Daten werden bei Browser-Daten-Löschen entfernt
 - Backups über Export-Funktion empfohlen
 - Chrome Sync optional (einige Daten über Chrome Sync syncbar)
 
 ## ⚡ Performance
 
-| Operation | Zeit | Method |
-|-----------|------|--------|
-| Bookmark speichern | ~100ms | Sync |
-| Klassifikation (Pattern) | ~50ms | Sync |
-| Klassifikation (Prompt API) | ~500-2000ms | Async LLM |
-| Duplikat-Erkennung (10 Bookmarks) | ~50ms | Sync |
-| Duplikat-Erkennung (1000 Bookmarks) | ~5s | Batch |
-| Export (500 Bookmarks) | ~100ms | Sync |
-| Import (500 Bookmarks) | ~1s | Batch |
+| Operation                           | Zeit        | Method    |
+| ----------------------------------- | ----------- | --------- |
+| Bookmark speichern                  | ~100ms      | Sync      |
+| Klassifikation (Pattern)            | ~50ms       | Sync      |
+| Klassifikation (Prompt API)         | ~500-2000ms | Async LLM |
+| Duplikat-Erkennung (10 Bookmarks)   | ~50ms       | Sync      |
+| Duplikat-Erkennung (1000 Bookmarks) | ~5s         | Batch     |
+| Export (500 Bookmarks)              | ~100ms      | Sync      |
+| Import (500 Bookmarks)              | ~1s         | Batch     |
 
 ## 🐛 Troubleshooting
 
