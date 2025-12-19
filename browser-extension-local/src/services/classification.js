@@ -47,29 +47,12 @@ export class ClassificationService {
    */
   async loadCategories() {
     try {
-      console.log("📂 Loading categories from YAML...");
-      const categoriesUrl = chrome.runtime.getURL("src/config/categories.yml");
-      const data = await loadYAML(categoriesUrl);
-
-      console.log(
-        "🔍 Loaded data structure:",
-        JSON.stringify(data, null, 2).substring(0, 500)
-      );
-
-      if (data && data.categories) {
-        CATEGORIES = data.categories;
-        this.categoriesLoaded = true;
-        console.log("✅ Categories loaded:", Object.keys(CATEGORIES));
-        console.log(
-          "🔍 First category sample:",
-          CATEGORIES[Object.keys(CATEGORIES)[0]]
-        );
-      } else {
-        throw new Error("Invalid categories.yml structure");
-      }
+      console.log("📂 Loading categories (using defaults)...");
+      CATEGORIES = this.getDefaultCategories();
+      this.categoriesLoaded = true;
+      console.log("✅ Categories loaded:", Object.keys(CATEGORIES));
     } catch (error) {
       console.error("❌ Failed to load categories:", error);
-      // Fallback zu Standard-Kategorien
       CATEGORIES = this.getDefaultCategories();
       this.categoriesLoaded = true;
       console.warn("⚠️ Using default categories as fallback");

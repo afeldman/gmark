@@ -19,7 +19,7 @@ export function parseSimpleYAML(yamlText) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    
+
     // Skip empty lines and comments
     if (!line.trim() || line.trim().startsWith("#")) continue;
 
@@ -32,16 +32,17 @@ export function parseSimpleYAML(yamlText) {
     // Handle array items (- value)
     if (content.startsWith("- ")) {
       const value = content.slice(2).trim();
-      
+
       // Make sure we're at the right context level
       while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
         stack.pop();
-        currentContext = stack.length > 0 ? stack[stack.length - 1].obj : result;
+        currentContext =
+          stack.length > 0 ? stack[stack.length - 1].obj : result;
       }
 
       // Get the key we should be filling
       const key = stack.length > 0 ? stack[stack.length - 1].key : currentKey;
-      
+
       // Create array if needed
       if (key && currentContext[key] && !Array.isArray(currentContext[key])) {
         currentContext[key] = [];
@@ -65,7 +66,8 @@ export function parseSimpleYAML(yamlText) {
       // Pop stack if we've decreased indentation
       while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
         stack.pop();
-        currentContext = stack.length > 0 ? stack[stack.length - 1].obj : result;
+        currentContext =
+          stack.length > 0 ? stack[stack.length - 1].obj : result;
       }
 
       if (value === "") {
@@ -74,7 +76,7 @@ export function parseSimpleYAML(yamlText) {
         stack.push({
           obj: currentContext[key],
           key: key,
-          indent: indent
+          indent: indent,
         });
         currentContext = currentContext[key];
         currentKey = key;
