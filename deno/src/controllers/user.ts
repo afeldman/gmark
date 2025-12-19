@@ -1,5 +1,5 @@
-import { Hono } from "hono";
-import { bearerAuth } from "hono/bearer-auth";
+import { Hono, Context } from "hono";
+import { bearerAuth } from "hono/middleware.ts";
 import { UserRegisterSchema, UserLoginSchema } from "../utils/schemas.ts";
 import * as UserService from "../services/user.ts";
 
@@ -9,7 +9,7 @@ export const userRouter = new Hono();
 userRouter.use("/me", bearerAuth({ token: "" })); // Wird überschrieben
 
 // Custom Middleware für Token Validierung
-userRouter.use(async (c, next) => {
+userRouter.use(async (c: Context, next: () => Promise<void>) => {
   const auth = c.req.header("Authorization");
   if (auth?.startsWith("Bearer ")) {
     const token = auth.substring(7);

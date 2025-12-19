@@ -1,4 +1,6 @@
 import * as BookmarkService from "../services/bookmark.ts";
+import * as HtmlService from "../services/html.ts";
+import * as AiService from "../services/ai.ts";
 
 // Extrahiere User aus Request Context (gespeichert von Auth Middleware)
 async function getUserIdFromToken(req: Request): Promise<number | null> {
@@ -38,7 +40,16 @@ export async function handleBookmarkPost(req: Request): Promise<Response> {
     const body = await req.json();
 
     if (pathname === "/api/bookmarks") {
-      const { title, url: bookmarkUrl, description, tags, category, notes, folder_id } = body;
+      const {
+        title,
+        url: bookmarkUrl,
+        description,
+        tags,
+        category,
+        notes,
+        folder_id,
+        autoClassify = false,
+      } = body;
       if (!title || !bookmarkUrl) {
         return new Response(
           JSON.stringify({ error: "Title and URL are required" }),
@@ -49,11 +60,52 @@ export async function handleBookmarkPost(req: Request): Promise<Response> {
         );
       }
 
+      let finalDescription = description;
+      let finalCategory = category;
+      let finalTags = tags || [];
+
+      // Auto-Classification wenn gewünscht
+      if (autoClassify) {
+        try {
+          // Versuche HTML Metadata zu extrahieren
+          const metadata = await HtmlService.extractMetadata(bookmarkUrl);
+
+          // Klassifiziere basierend auf extrahiertem Content
+          const classification = await AiService.classifyBookmark(
+            title,
+            metadata?.description || description || "",
+            metadata?.keywords || [],
+            { useOpenAI: true, useLocalLLM: true, usePatterns: true }
+          );
+
+          // Übernehme nur wenn keine Werte gesetzt sind
+          if (!finalDescription && metadata?.description) {
+            finalDescription = metadata.description;
+          }
+          if (!finalCategory) {
+            finalCategory = classification.category;
+          }
+          if (!finalTags || finalTags.length === 0) {
+            finalTags = classification.tags;
+          }
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.warn("Auto-classification failed:", message);
+          // Fallback: Weitermachen ohne auto-classification
+        }
+      }
+
       const bookmark = await BookmarkService.createBookmark(
         userId,
         title,
         bookmarkUrl,
-        { description, tags, category, notes, folder_id }
+        {
+          description: finalDescription,
+          tags: finalTags,
+          category: finalCategory,
+          notes,
+          folder_id,
+        }
       );
 
       return new Response(JSON.stringify(bookmark), {
@@ -65,13 +117,20 @@ export async function handleBookmarkPost(req: Request): Promise<Response> {
     if (pathname === "/api/folders") {
       const { name, parent_id } = body;
       if (!name) {
-        return new Response(JSON.stringify({ error: "Folder name is required" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ error: "Folder name is required" }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
       }
 
-      const folder = await BookmarkService.createFolder(userId, name, parent_id);
+      const folder = await BookmarkService.createFolder(
+        userId,
+        name,
+        parent_id
+      );
 
       return new Response(JSON.stringify(folder), {
         status: 201,
@@ -220,7 +279,11 @@ export async function handleBookmarkPut(req: Request): Promise<Response> {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    const status = message.includes("not found") ? 404 : message.includes("Unauthorized") ? 403 : 400;
+    const status = message.includes("not found")
+      ? 404
+      : message.includes("Unauthorized")
+      ? 403
+      : 400;
     return new Response(JSON.stringify({ error: message }), {
       status,
       headers: { "Content-Type": "application/json" },
@@ -271,7 +334,11 @@ export async function handleBookmarkDelete(req: Request): Promise<Response> {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    const status = message.includes("not found") ? 404 : message.includes("Unauthorized") ? 403 : 400;
+    const status = message.includes("not found")
+      ? 404
+      : message.includes("Unauthorized")
+      ? 403
+      : 400;
     return new Response(JSON.stringify({ error: message }), {
       status,
       headers: { "Content-Type": "application/json" },

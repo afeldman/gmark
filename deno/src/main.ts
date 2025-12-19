@@ -5,7 +5,10 @@ envFile.split("\n").forEach((line) => {
   if (key && key.trim() && !key.startsWith("#")) {
     Deno.env.set(
       key.trim(),
-      valueParts.join("=").trim().replace(/^"(.*)"$/, "$1")
+      valueParts
+        .join("=")
+        .trim()
+        .replace(/^"(.*)"$/, "$1")
     );
   }
 });
@@ -13,6 +16,8 @@ envFile.split("\n").forEach((line) => {
 // Importiere Services
 import * as UserService from "./services/user.ts";
 import * as BookmarkService from "./controllers/bookmark.ts";
+import * as HtmlService from "./services/html.ts";
+import * as AiService from "./services/ai.ts";
 import { getDB, closeDB } from "./utils/db.ts";
 
 // Initialisiere DB
@@ -103,6 +108,51 @@ async function handleUserGet(req: Request): Promise<Response> {
   }
 }
 
+// ==================== Classification Handler ====================
+
+async function handleClassificationPost(req: Request): Promise<Response> {
+  try {
+    const body = await req.json();
+    const { url } = body;
+
+    if (!url) {
+      return new Response(JSON.stringify({ error: "URL is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Extrahiere Metadaten
+    const metadata = await HtmlService.extractMetadata(url);
+
+    // Klassifiziere
+    const classification = await AiService.classifyBookmark(
+      metadata?.title || "Untitled",
+      metadata?.description || "",
+      metadata?.keywords || [],
+      { useOpenAI: true, useLocalLLM: true, usePatterns: true }
+    );
+
+    return new Response(
+      JSON.stringify({
+        url,
+        metadata,
+        classification,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+}
+
 // ==================== Main Request Handler ====================
 
 function handleRequest(req: Request): Response | Promise<Response> {
@@ -126,6 +176,20 @@ function handleRequest(req: Request): Response | Promise<Response> {
       status: 200,
       headers: { "Content-Type": "application/json", ...headers },
     });
+  }
+
+  // AI Classification Endpoint
+  if (pathname === "/api/bookmarks/classify") {
+    if (req.method === "POST") {
+      return handleClassificationPost(req).then((res) => {
+        const corsHeaders = new Headers(res.headers);
+        Object.entries(headers).forEach(([k, v]) => corsHeaders.set(k, v));
+        return new Response(res.body, {
+          status: res.status,
+          headers: corsHeaders,
+        });
+      });
+    }
   }
 
   // User Endpoints
@@ -153,7 +217,10 @@ function handleRequest(req: Request): Response | Promise<Response> {
   }
 
   // Bookmark Endpoints
-  if (pathname.startsWith("/api/bookmarks") || pathname.startsWith("/api/folders")) {
+  if (
+    pathname.startsWith("/api/bookmarks") ||
+    pathname.startsWith("/api/folders")
+  ) {
     if (req.method === "POST") {
       return BookmarkService.handleBookmarkPost(req).then((res) => {
         const corsHeaders = new Headers(res.headers);
