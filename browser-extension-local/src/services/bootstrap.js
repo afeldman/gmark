@@ -584,16 +584,19 @@ Nachdem Änderungen vorgenommen wurden:
             if (pageContent) {
               console.log(`  🤖 Erstelle KI-Zusammenfassung...`);
               try {
-                const { summarizeInTab } = await import('../utils/ai-proxy.js');
+                const { summarizeInTab } = await import("../utils/ai-proxy.js");
                 summary = await summarizeInTab(pageContent, bookmark.title);
-                
+
                 if (summary) {
                   console.log(
                     `  ✅ Zusammenfassung erstellt (${summary.length} Zeichen)`
                   );
                 }
               } catch (error) {
-                console.warn(`  ⚠️ Zusammenfassung fehlgeschlagen:`, error.message);
+                console.warn(
+                  `  ⚠️ Zusammenfassung fehlgeschlagen:`,
+                  error.message
+                );
                 summary = "";
               }
             }

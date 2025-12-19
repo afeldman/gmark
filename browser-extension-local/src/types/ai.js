@@ -20,6 +20,7 @@ export function isPromptAPIAvailable(ai) {
 
 /**
  * Check if we can create a text session
+ * Prüft Service Worker Context, dann Tab-Context als Fallback
  * @param {Function} statusCallback - Optional callback for status updates
  * @returns {Promise<boolean>}
  */
@@ -32,10 +33,29 @@ export async function checkCanCreateSession(statusCallback) {
     console.log("  AI object available:", !!ai);
     console.log("  languageModel available:", hasLM);
 
+    // Wenn im Service Worker Context kein AI verfügbar, prüfe Tab-Context
     if (!hasLM || typeof ai.languageModel.canCreateTextSession !== "function") {
-      console.log("  ❌ AI available: false");
-      if (statusCallback) statusCallback("no");
-      return false;
+      console.log("  ⚠️ AI nicht im Service Worker verfügbar");
+      console.log("  🔄 Prüfe Tab-Context als Fallback...");
+      
+      try {
+        const { checkPromptAPIInTab } = await import('../utils/ai-proxy.js');
+        const tabResult = await checkPromptAPIInTab();
+        
+        if (tabResult.available) {
+          console.log("  ✅ AI verfügbar in Tab-Context!");
+          if (statusCallback) statusCallback("readily");
+          return true;
+        } else {
+          console.log("  ❌ AI auch in Tab-Context nicht verfügbar:", tabResult.error);
+          if (statusCallback) statusCallback("no");
+          return false;
+        }
+      } catch (error) {
+        console.error("  ❌ Tab-Context Check fehlgeschlagen:", error);
+        if (statusCallback) statusCallback("no");
+        return false;
+      }
     }
 
     const status = await ai.languageModel.canCreateTextSession();
