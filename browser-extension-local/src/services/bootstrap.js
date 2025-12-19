@@ -14,6 +14,7 @@
 
 import StorageManager from "../utils/storage.js";
 import ClassificationService from "./classification.js";
+import { summarizeInTab } from "../utils/ai-proxy.js";
 import {
   checkCanCreateSession,
   createLanguageModelSession,
@@ -584,7 +585,6 @@ Nachdem Änderungen vorgenommen wurden:
             if (pageContent) {
               console.log(`  🤖 Erstelle KI-Zusammenfassung...`);
               try {
-                const { summarizeInTab } = await import("../utils/ai-proxy.js");
                 summary = await summarizeInTab(pageContent, bookmark.title);
 
                 if (summary) {

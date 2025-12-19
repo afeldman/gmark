@@ -16,6 +16,7 @@ import {
   classifyWithAI,
   safeDestroySession,
 } from "../types/ai.js";
+import { classifyInTab } from "../utils/ai-proxy.js";
 import UsageManager from "../utils/usage.js";
 
 import { loadYAML } from "../utils/yaml-parser.js";
@@ -169,15 +170,19 @@ export class ClassificationService {
       if (usePromptAPI && this.promptAPIAvailable) {
         try {
           console.log("  🤖 Versuche AI-Klassifikation über Tab-Context...");
-          
+
           // Nutze Tab-Context für AI-Calls
-          const { classifyInTab } = await import('../utils/ai-proxy.js');
+          const { classifyInTab } = await import("../utils/ai-proxy.js");
           const aiResult = await classifyInTab(bookmark);
-          
+
           // Füge Farbe hinzu
           aiResult.color = CATEGORIES[aiResult.category]?.color || "#6b7280";
-          
-          console.log(`  ✅ AI-Result: ${aiResult.category} (${aiResult.confidence.toFixed(2)})`);
+
+          console.log(
+            `  ✅ AI-Result: ${
+              aiResult.category
+            } (${aiResult.confidence.toFixed(2)})`
+          );
           return aiResult;
         } catch (error) {
           console.warn(
@@ -200,7 +205,7 @@ export class ClassificationService {
         tags: [],
         summary: "",
         method: "error-fallback",
-        color: "#6b7280"
+        color: "#6b7280",
       };
     }
   }

@@ -7,6 +7,8 @@
  * Diese Datei stellt Runtime-Funktionen für sichere Nutzung der Prompt API zur Verfügung
  */
 
+import { checkPromptAPIInTab } from "../utils/ai-proxy.js";
+
 /**
  * Check if Prompt API is available
  * @param {any} ai - AI object (from self.ai or globalThis.ai)
@@ -39,7 +41,6 @@ export async function checkCanCreateSession(statusCallback) {
       console.log("  🔄 Prüfe Tab-Context als Fallback...");
 
       try {
-        const { checkPromptAPIInTab } = await import("../utils/ai-proxy.js");
         const tabResult = await checkPromptAPIInTab();
 
         if (tabResult.available) {
