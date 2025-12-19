@@ -1,10 +1,10 @@
 /**
  * Classification Service
- * 
+ *
  * Nutzt Chrome Prompt API für lokale, private Klassifikation
  * Mit @types/dom-chromium-ai für Type-Safety
  * Kategorien: Development, Social, News, Shopping, Education, Entertainment, Documentation, Tools, Other
- * 
+ *
  * @typedef {import('../types/ai').LanguageModelResponse} LanguageModelResponse
  * @typedef {import('../types/ai').LanguageModelSession} LanguageModelSession
  */
@@ -308,7 +308,7 @@ Antwort (nur JSON, keine anderen Worte):
 
       // Type-safe Classification
       const result = await classifyWithAI(session, prompt);
-      
+
       if (!result) {
         throw new Error("Classification failed");
       }
