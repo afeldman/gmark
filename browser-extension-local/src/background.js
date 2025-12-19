@@ -359,12 +359,19 @@ async function savePage(url, title, tabId) {
         console.log("  📝 Erstelle Seitenzusammenfassung...");
         try {
           const aiModule = await import("./types/ai.js");
-          const { checkCanCreateSession, createLanguageModelSession, summarizeWithAI, safeDestroySession } = aiModule;
-          
+          const {
+            checkCanCreateSession,
+            createLanguageModelSession,
+            summarizeWithAI,
+            safeDestroySession,
+          } = aiModule;
+
           if (await checkCanCreateSession()) {
             const session = await createLanguageModelSession();
             if (session) {
-              pageSummary = await summarizeWithAI(session, response.pageText, title) || "";
+              pageSummary =
+                (await summarizeWithAI(session, response.pageText, title)) ||
+                "";
               safeDestroySession(session);
               console.log("  ✅ Zusammenfassung erstellt");
             }
@@ -475,12 +482,22 @@ async function saveBookmark(bookmark) {
         console.log("  📝 Erstelle Seitenzusammenfassung...");
         try {
           const aiModule = await import("./types/ai.js");
-          const { checkCanCreateSession, createLanguageModelSession, summarizeWithAI, safeDestroySession } = aiModule;
-          
+          const {
+            checkCanCreateSession,
+            createLanguageModelSession,
+            summarizeWithAI,
+            safeDestroySession,
+          } = aiModule;
+
           if (await checkCanCreateSession()) {
             const session = await createLanguageModelSession();
             if (session) {
-              pageSummary = await summarizeWithAI(session, bookmark.content, bookmark.title) || "";
+              pageSummary =
+                (await summarizeWithAI(
+                  session,
+                  bookmark.content,
+                  bookmark.title
+                )) || "";
               safeDestroySession(session);
               console.log("  ✅ Zusammenfassung erstellt");
             }
