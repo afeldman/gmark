@@ -1,33 +1,66 @@
 from repositories.IUserRepository import IUserRepository
 from entity_manager.entity_manager import entity_manager
 from DTOs.User import User, ActiveSession
-from decouple import config
+import os
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends
 from passlib.context import CryptContext
 from datetime import timedelta
-from passlib.hash import bcrypt
 from datetime import datetime, timezone
 import jwt
 from jwt import PyJWTError
 from fastapi import HTTPException
+import hashlib
+import secrets
 
-# CryptContext for hashing passwords
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# CryptContext for hashing passwords - use argon2 with fallback
+try:
+    pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+except:
+    pwd_context = None
 
 class UserRepository(IUserRepository):
     def __init__(self):
-        self.em = entity_manager.get_collection(config("USER_COLLECTION", 'USER'))
-        self.activeSessionsEntityManager = entity_manager.get_collection(config("ACTIVE_SESSIONS_COLLECTION", "ACTIVE_SESSIONS"))
+        self.em = entity_manager.get_collection(os.getenv("USER_COLLECTION", 'users'))
+        self.activeSessionsEntityManager = entity_manager.get_collection(os.getenv("ACTIVE_SESSIONS_COLLECTION", "active_sessions"))
     
-    def register(self, user : User):
+    def _hash_password(self, password: str) -> str:
+        """Hash password with argon2 or SHA256+salt fallback"""
+        try:
+            if pwd_context:
+                return pwd_context.hash(password)
+        except:
+            pass
+        # Fallback to SHA256 + salt
+        salt = secrets.token_hex(16)
+        password_hash = hashlib.sha256((salt + password).encode()).hexdigest()
+        return f"sha256${salt}${password_hash}"
+    
+    def _verify_password(self, password: str, password_hash: str) -> bool:
+        """Verify password against hash"""
+        try:
+            if pwd_context:
+                return pwd_context.verify(password, password_hash)
+        except:
+            pass
+        # Fallback to SHA256
+        if password_hash.startswith("sha256$"):
+            parts = password_hash.split("$")
+            if len(parts) == 3:
+                salt, stored_hash = parts[1], parts[2]
+                test_hash = hashlib.sha256((salt + password).encode()).hexdigest()
+                return test_hash == stored_hash
+        return False
+    
+    def register(self, user: User):
         usr = self.em.find_one({"username": user.username})
 
         if usr is None:
             self.em.insert_one(
                 {
                     "username": user.username,
-                    "password": bcrypt.using(rounds=12).hash(user.password)
+                    "email": user.email,
+                    "password": self._hash_password(user.password[:72])  # Limit password to 72 chars
                 }
             )
             return user

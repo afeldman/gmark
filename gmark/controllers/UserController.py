@@ -21,8 +21,11 @@ class UserController:
                 return CustomResponseMessage(status_code = 200, message = f"User {user.username} registered successfully.")
             else:
                 raise HTTPException(status_code=422, detail="User already exists")
+        except HTTPException:
+            raise
         except Exception as e:
-            raise HTTPException(status_code=e.status_code, detail=str(e.detail))
+            print(f"Registration error: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
     
     @user_controller_router.post("/token")
     def get_access_token(self, form_data: OAuth2PasswordRequestForm = Depends()):
