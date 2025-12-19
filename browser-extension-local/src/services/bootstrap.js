@@ -578,23 +578,23 @@ Nachdem Änderungen vorgenommen wurden:
             const pageContent = await this.loadPageContent(bookmark.url);
 
             // ============================================================
-            // SCHRITT 6.5: Erstelle Zusammenfassung mit KI
+            // SCHRITT 6.5: Erstelle Zusammenfassung mit KI (über Tab-Context)
             // ============================================================
             let summary = "";
             if (pageContent) {
               console.log(`  🤖 Erstelle KI-Zusammenfassung...`);
-              const session = await createLanguageModelSession();
-              if (session) {
-                summary =
-                  (await summarizeWithAI(
-                    session,
-                    pageContent,
-                    bookmark.title
-                  )) || "";
-                safeDestroySession(session);
-                console.log(
-                  `  ✅ Zusammenfassung erstellt (${summary.length} Zeichen)`
-                );
+              try {
+                const { summarizeInTab } = await import('../utils/ai-proxy.js');
+                summary = await summarizeInTab(pageContent, bookmark.title);
+                
+                if (summary) {
+                  console.log(
+                    `  ✅ Zusammenfassung erstellt (${summary.length} Zeichen)`
+                  );
+                }
+              } catch (error) {
+                console.warn(`  ⚠️ Zusammenfassung fehlgeschlagen:`, error.message);
+                summary = "";
               }
             }
 
