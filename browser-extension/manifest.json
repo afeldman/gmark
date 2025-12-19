@@ -1,15 +1,16 @@
 {
   "manifest_version": 3,
   "name": "GMARK - AI Bookmark Manager",
-  "version": "1.0.0",
-  "description": "Intelligentes Bookmark-Management mit Chrome AI (Gemini Nano), automatischer Klassifikation und Dateisystem-Organisation",
+  "version": "1.0.1",
+  "description": "Intelligentes Bookmark-Management mit Chrome Prompt API (lokale LLM), automatischer Klassifikation und Dateisystem-Organisation",
   "permissions": [
     "storage",
     "activeTab",
     "contextMenus",
     "tabs",
     "notifications",
-    "alarms"
+    "alarms",
+    "ai"
   ],
   "host_permissions": ["http://localhost:8000/*", "<all_urls>"],
   "background": {

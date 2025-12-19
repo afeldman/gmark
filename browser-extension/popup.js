@@ -96,41 +96,36 @@ function populateFolderSelect(folders) {
   folders.forEach((folder) => addFolder(folder));
 }
 
-// Classify page with AI
+// Classify page with AI - Priorität: Prompt API → Backend → Offline
 async function classifyPage() {
   const aiStatus = document.getElementById("aiStatus");
   const aiStatusText = document.getElementById("aiStatusText");
 
   aiStatus.classList.remove("hidden");
   aiStatus.classList.add("processing");
-  aiStatusText.textContent = "AI analysiert Seite...";
+  aiStatusText.textContent = "🔍 AI analysiert Seite...";
 
   try {
-    // Get page content from content script
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      action: "getPageContent",
-    });
-
-    // Try Chrome AI first
-    const classification = await classifyWithChromeAI(
+    // 1. Versuche Chrome Prompt API (On-Device LLM)
+    const promptApiResult = await classifyWithPromptAPI(
       currentTab.url,
-      currentTab.title,
-      response?.content || ""
+      currentTab.title
     );
 
-    if (classification) {
-      aiClassification = classification;
-      displayClassification(classification);
-      aiStatusText.textContent = "✅ Mit Chrome AI klassifiziert";
-      setTimeout(() => aiStatus.classList.add("hidden"), 2000);
-    } else {
-      // Fallback to backend API
-      await classifyWithBackend(response?.content || "");
+    if (promptApiResult) {
+      aiClassification = {
+        ...promptApiResult,
+        method: "prompt-api",
+      };
+      displayClassificationResult(promptApiResult);
+      aiStatusText.textContent =
+        "✅ Mit Chrome Prompt API klassifiziert (On-Device)";
+      setTimeout(() => aiStatus.classList.add("hidden"), 2500);
+      return;
     }
+
+    // 2. Fallback: Backend-Klassifikation
+    await classifyWithBackend();
   } catch (error) {
     console.error("Classification error:", error);
     aiStatusText.textContent = "⚠️ AI-Klassifikation fehlgeschlagen";
@@ -138,48 +133,115 @@ async function classifyPage() {
   }
 }
 
-// Classify with Chrome AI (Gemini Nano)
-async function classifyWithChromeAI(url, title, content) {
+// Klassifiziere mit Chrome Prompt API (Gemini Nano - On-Device)
+async function classifyWithPromptAPI(url, title) {
   try {
+    // Prüfe ob Prompt API verfügbar ist
     if (typeof window.ai === "undefined") {
+      console.log("Prompt API nicht verfügbar");
       return null;
     }
 
+    // Prüfe ob Text-Session erstellt werden kann
     const canUse = await window.ai.canCreateTextSession();
-    if (canUse !== "readily") {
+    console.log("Prompt API Status:", canUse);
+
+    if (canUse !== "readily" && canUse !== "after-download") {
+      // "readily" = sofort verfügbar
+      // "after-download" = nach Download verfügbar (könnte warten)
+      // andere = nicht verfügbar
       return null;
     }
 
+    const aiStatusText = document.getElementById("aiStatusText");
+    aiStatusText.textContent = "⏳ Laden Sie das lokale LLM-Modell...";
+
+    // Erstelle Text-Session (lädt Modell herunter falls nötig)
     const session = await window.ai.createTextSession({
-      temperature: 0.7,
-      topK: 3,
+      temperature: 0.3, // Niedrig für konsistente Klassifikation
+      topK: 1,
     });
 
-    const prompt = `Analyze this webpage and provide:
-1. 5 relevant keywords (comma-separated)
-2. A brief summary (1-2 sentences)
-3. A suggested folder path in format /category/subcategory
+    // Spezifischer Prompt für Bookmark-Klassifikation
+    const prompt = `Du bist ein Experte für URL-Klassifikation. Analysiere diese Webpage und klassifiziere sie.
 
 URL: ${url}
 Title: ${title}
-Content: ${content.substring(0, 1000)}
 
-Respond with JSON:
-{"keywords": ["k1","k2","k3","k4","k5"], "summary": "...", "folder_path": "/path"}`;
+Antworte AUSSCHLIESSLICH im JSON-Format (kein zusätzlicher Text):
+{
+  "category": "Development|Social|News|Shopping|Education|Entertainment|Documentation|Tools|Other",
+  "tags": ["tag1", "tag2", "tag3"],
+  "confidence": 0.95
+}
+
+Kategorien:
+- Development: Code, GitHub, APIs, Frameworks, Dokumentation für Entwicklung
+- Social: Twitter, Facebook, Instagram, Reddit, LinkedIn, YouTube
+- News: Nachrichten, Blogs, Artikel, Journalismus
+- Shopping: Amazon, eBay, Online-Shops, Produkte
+- Education: Kurse, Tutorials, Universitäten, Learning Platforms
+- Entertainment: Netflix, Filme, Musik, Spiele
+- Documentation: Technische Dokumentation, Handbücher, Referenzen
+- Tools: Online-Tools, Converter, Generatoren, Editoren
+- Other: Sonstiges`;
 
     const response = await session.prompt(prompt);
     await session.destroy();
 
-    // Parse JSON from response
+    console.log("Prompt API Response:", response);
+
+    // Parse JSON aus Response
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      const result = JSON.parse(jsonMatch[0]);
+      return {
+        category: result.category,
+        tags: result.tags || [],
+        confidence: result.confidence || 0.8,
+      };
     }
 
     return null;
   } catch (error) {
-    console.error("Chrome AI error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn("Prompt API error:", message);
     return null;
+  }
+}
+
+// Display Klassifikationsergebnis (einheitlich für alle Methoden)
+function displayClassificationResult(classification) {
+  const aiStatus = document.getElementById("aiStatus");
+  const categoryBadge = document.getElementById("categoryBadge");
+
+  // Erstelle oder update Category Badge
+  if (!categoryBadge) {
+    const badge = document.createElement("div");
+    badge.id = "categoryBadge";
+    badge.className = "category-badge";
+    aiStatus.parentElement.insertBefore(badge, aiStatus);
+  }
+
+  const badge = document.getElementById("categoryBadge");
+  badge.textContent = `📁 ${classification.category} (${Math.round(
+    (classification.confidence || 0.8) * 100
+  )}%)`;
+  badge.classList.remove("hidden");
+
+  // Zeige Tags
+  if (classification.tags && classification.tags.length > 0) {
+    const keywordsList = document.getElementById("keywordsList");
+    keywordsList.innerHTML = "";
+
+    classification.tags.forEach((tag) => {
+      const tagEl = document.createElement("span");
+      tagEl.className = "keyword-tag";
+      tagEl.textContent = tag;
+      keywordsList.appendChild(tagEl);
+    });
+
+    document.getElementById("keywordsDisplay").classList.remove("hidden");
   }
 }
 
@@ -245,68 +307,14 @@ async function classifyWithBackend() {
 
 // Display backend classification results
 function displayBackendClassification(classification) {
-  // Show category
-  const categoryBadge = document.getElementById("categoryBadge");
-  if (!categoryBadge) {
-    const badge = document.createElement("div");
-    badge.id = "categoryBadge";
-    badge.className = "category-badge";
-    document
-      .getElementById("aiStatus")
-      .parentElement.insertBefore(badge, document.getElementById("aiStatus"));
-  }
-
-  const badge = document.getElementById("categoryBadge");
-  badge.textContent = `📁 ${classification.category}`;
-  badge.classList.remove("hidden");
-
-  // Show tags
-  if (classification.tags && classification.tags.length > 0) {
-    const keywordsList = document.getElementById("keywordsList");
-    keywordsList.innerHTML = "";
-
-    classification.tags.forEach((tag) => {
-      const tagEl = document.createElement("span");
-      tagEl.className = "keyword-tag";
-      tagEl.textContent = tag;
-      keywordsList.appendChild(tag);
-    });
-
-    document.getElementById("keywordsDisplay").classList.remove("hidden");
-  }
+  // Nutze einheitliche Funktion
+  displayClassificationResult(classification);
 }
 
 // Display classification results
 function displayClassification(classification) {
-  // Show suggested folder
-  if (classification.folder_path) {
-    document.getElementById("suggestedFolder").textContent =
-      classification.folder_path;
-    document.getElementById("folderSuggestion").classList.remove("hidden");
-  }
-
-  // Show keywords
-  if (classification.keywords && classification.keywords.length > 0) {
-    const keywordsList = document.getElementById("keywordsList");
-    keywordsList.innerHTML = "";
-
-    classification.keywords.forEach((keyword) => {
-      const tag = document.createElement("span");
-      tag.className = "keyword-tag";
-      tag.textContent = keyword;
-      keywordsList.appendChild(tag);
-    });
-
-    document.getElementById("keywordsDisplay").classList.remove("hidden");
-  }
-
-  // Fill description if available
-  if (classification.summary) {
-    const descField = document.getElementById("description");
-    if (!descField.value) {
-      descField.value = classification.summary;
-    }
-  }
+  // Nutze einheitliche Funktion
+  displayClassificationResult(classification);
 }
 
 // Use AI suggested folder
