@@ -8,119 +8,129 @@
 export function classifyByPatterns(
   title: string | null,
   description: string | null,
-  keywords: string[]
+  keywords: string[],
 ): { category: string; confidence: number } {
-  const text = `${title || ""} ${description || ""} ${keywords.join(" ")}`.toLowerCase();
+  const text = `${title || ""} ${description || ""} ${keywords.join(" ")}`
+    .toLowerCase();
 
   // Kategorie Patterns
-  const categories: Record<string, { patterns: string[]; confidence: number }> = {
-    Development: {
-      patterns: [
-        "github",
-        "gitlab",
-        "code",
-        "programming",
-        "developer",
-        "npm",
-        "javascript",
-        "python",
-        "typescript",
-        "react",
-        "angular",
-        "vue",
-        "node",
-        "express",
-        "api",
-        "database",
-        "sql",
-      ],
-      confidence: 0.8,
-    },
-    Social: {
-      patterns: [
-        "twitter",
-        "facebook",
-        "instagram",
-        "linkedin",
-        "reddit",
-        "tiktok",
-        "youtube",
-        "social",
-        "community",
-      ],
-      confidence: 0.85,
-    },
-    News: {
-      patterns: [
-        "news",
-        "article",
-        "blog",
-        "medium",
-        "journalist",
-        "press",
-        "breaking",
-        "headline",
-      ],
-      confidence: 0.8,
-    },
-    Shopping: {
-      patterns: [
-        "amazon",
-        "ebay",
-        "shop",
-        "store",
-        "buy",
-        "price",
-        "product",
-        "cart",
-        "checkout",
-      ],
-      confidence: 0.85,
-    },
-    Education: {
-      patterns: [
-        "udemy",
-        "coursera",
-        "edx",
-        "learning",
-        "course",
-        "tutorial",
-        "education",
-        "school",
-        "university",
-      ],
-      confidence: 0.8,
-    },
-    Entertainment: {
-      patterns: ["netflix", "disney", "movie", "music", "game", "film", "entertainment"],
-      confidence: 0.8,
-    },
-    Documentation: {
-      patterns: [
-        "docs",
-        "documentation",
-        "manual",
-        "guide",
-        "specification",
-        "reference",
-        "readme",
-      ],
-      confidence: 0.85,
-    },
-    Tools: {
-      patterns: [
-        "tool",
-        "converter",
-        "generator",
-        "calculator",
-        "editor",
-        "app",
-        "application",
-        "online",
-      ],
-      confidence: 0.7,
-    },
-  };
+  const categories: Record<string, { patterns: string[]; confidence: number }> =
+    {
+      Development: {
+        patterns: [
+          "github",
+          "gitlab",
+          "code",
+          "programming",
+          "developer",
+          "npm",
+          "javascript",
+          "python",
+          "typescript",
+          "react",
+          "angular",
+          "vue",
+          "node",
+          "express",
+          "api",
+          "database",
+          "sql",
+        ],
+        confidence: 0.8,
+      },
+      Social: {
+        patterns: [
+          "twitter",
+          "facebook",
+          "instagram",
+          "linkedin",
+          "reddit",
+          "tiktok",
+          "youtube",
+          "social",
+          "community",
+        ],
+        confidence: 0.85,
+      },
+      News: {
+        patterns: [
+          "news",
+          "article",
+          "blog",
+          "medium",
+          "journalist",
+          "press",
+          "breaking",
+          "headline",
+        ],
+        confidence: 0.8,
+      },
+      Shopping: {
+        patterns: [
+          "amazon",
+          "ebay",
+          "shop",
+          "store",
+          "buy",
+          "price",
+          "product",
+          "cart",
+          "checkout",
+        ],
+        confidence: 0.85,
+      },
+      Education: {
+        patterns: [
+          "udemy",
+          "coursera",
+          "edx",
+          "learning",
+          "course",
+          "tutorial",
+          "education",
+          "school",
+          "university",
+        ],
+        confidence: 0.8,
+      },
+      Entertainment: {
+        patterns: [
+          "netflix",
+          "disney",
+          "movie",
+          "music",
+          "game",
+          "film",
+          "entertainment",
+        ],
+        confidence: 0.8,
+      },
+      Documentation: {
+        patterns: [
+          "docs",
+          "documentation",
+          "manual",
+          "guide",
+          "specification",
+          "reference",
+          "readme",
+        ],
+        confidence: 0.85,
+      },
+      Tools: {
+        patterns: [
+          "tool",
+          "converter",
+          "generator",
+          "calculator",
+          "editor",
+          "app",
+          "application",
+          "online",
+        ],
+        confidence: 0.7,
+      },
+    };
 
   let bestCategory = "Other";
   let bestScore = 0;
@@ -153,7 +163,7 @@ export function generateTags(
   title: string | null,
   description: string | null,
   keywords: string[],
-  category: string
+  category: string,
 ): string[] {
   const tags = new Set<string>();
 
@@ -184,7 +194,7 @@ export function generateTags(
 export async function classifyWithOpenAI(
   title: string,
   description: string,
-  apiKey?: string
+  apiKey?: string,
 ): Promise<{ category: string; confidence: number; reasoning: string } | null> {
   const key = apiKey || Deno.env.get("OPENAI_API_KEY");
 
@@ -209,7 +219,8 @@ export async function classifyWithOpenAI(
           },
           {
             role: "user",
-            content: `Klassifiziere diese URL:\nTitle: ${title}\nDescription: ${description}`,
+            content:
+              `Klassifiziere diese URL:\nTitle: ${title}\nDescription: ${description}`,
           },
         ],
         temperature: 0.3,
@@ -246,7 +257,7 @@ export async function classifyWithOpenAI(
 export async function classifyWithLocalLLM(
   title: string,
   description: string,
-  endpoint?: string
+  endpoint?: string,
 ): Promise<{ category: string; confidence: number; reasoning: string } | null> {
   const url = endpoint || Deno.env.get("ANYTHINGLLM_ENDPOINT");
 
@@ -261,7 +272,8 @@ export async function classifyWithLocalLLM(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message: `Klassifiziere diese URL in eine Kategorie (Development, Social, News, Shopping, Education, Entertainment, Documentation, Tools, Other):\nTitle: ${title}\nDescription: ${description}\n\nAntwort im JSON Format: {category: string, confidence: number 0-1}`,
+        message:
+          `Klassifiziere diese URL in eine Kategorie (Development, Social, News, Shopping, Education, Entertainment, Documentation, Tools, Other):\nTitle: ${title}\nDescription: ${description}\n\nAntwort im JSON Format: {category: string, confidence: number 0-1}`,
       }),
       signal: AbortSignal.timeout(10000),
     });
@@ -294,7 +306,7 @@ export async function classifyBookmark(
     useOpenAI?: boolean;
     useLocalLLM?: boolean;
     usePatterns?: boolean;
-  }
+  },
 ): Promise<{
   category: string;
   confidence: number;
@@ -309,7 +321,12 @@ export async function classifyBookmark(
   if (useOpenAI) {
     const openaiResult = await classifyWithOpenAI(title, description);
     if (openaiResult && openaiResult.confidence > 0.7) {
-      const tags = generateTags(title, description, keywords, openaiResult.category);
+      const tags = generateTags(
+        title,
+        description,
+        keywords,
+        openaiResult.category,
+      );
       return {
         category: openaiResult.category,
         confidence: openaiResult.confidence,
@@ -323,7 +340,12 @@ export async function classifyBookmark(
   if (useLocalLLM) {
     const localResult = await classifyWithLocalLLM(title, description);
     if (localResult && localResult.confidence > 0.7) {
-      const tags = generateTags(title, description, keywords, localResult.category);
+      const tags = generateTags(
+        title,
+        description,
+        keywords,
+        localResult.category,
+      );
       return {
         category: localResult.category,
         confidence: localResult.confidence,
@@ -336,7 +358,12 @@ export async function classifyBookmark(
   // Fallback zu Pattern-basierter Classification
   if (usePatterns) {
     const patternResult = classifyByPatterns(title, description, keywords);
-    const tags = generateTags(title, description, keywords, patternResult.category);
+    const tags = generateTags(
+      title,
+      description,
+      keywords,
+      patternResult.category,
+    );
     return {
       category: patternResult.category,
       confidence: patternResult.confidence,

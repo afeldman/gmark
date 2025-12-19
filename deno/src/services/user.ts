@@ -5,7 +5,7 @@ import { generateToken, getTokenExpiration } from "../utils/jwt.ts";
 export async function registerUser(
   username: string,
   email: string,
-  password: string
+  password: string,
 ) {
   const db = getDB();
 

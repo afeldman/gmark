@@ -1,9 +1,12 @@
 // Einfache JWT Implementierung ohne externe Dependencies
 import { crypto } from "https://deno.land/std@0.208.0/crypto/mod.ts";
 
-const secret = Deno.env.get("SECRET_KEY") || "gmark-secret-key-2025-production-secure-token";
+const secret = Deno.env.get("SECRET_KEY") ||
+  "gmark-secret-key-2025-production-secure-token";
 const algorithm = "HS256";
-const expirationMinutes = parseInt(Deno.env.get("ACCESS_TOKEN_EXPIRE_MINUTES") || "30");
+const expirationMinutes = parseInt(
+  Deno.env.get("ACCESS_TOKEN_EXPIRE_MINUTES") || "30",
+);
 
 // Base64URL Encoding
 function base64UrlEncode(data: string): string {
@@ -31,7 +34,7 @@ async function sign(message: string): Promise<string> {
     keyData,
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
 
   const signature = await crypto.subtle.sign("HMAC", key, messageData);
@@ -49,11 +52,11 @@ async function verify(message: string, signature: string): Promise<boolean> {
     keyData,
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["verify"]
+    ["verify"],
   );
 
   const signatureBytes = new Uint8Array(
-    base64UrlDecode(signature).split("").map((c) => c.charCodeAt(0))
+    base64UrlDecode(signature).split("").map((c) => c.charCodeAt(0)),
   );
 
   return await crypto.subtle.verify("HMAC", key, signatureBytes, messageData);
@@ -63,9 +66,11 @@ export async function generateToken(userId: number): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = now + expirationMinutes * 60;
 
-  const header = base64UrlEncode(JSON.stringify({ alg: algorithm, typ: "JWT" }));
+  const header = base64UrlEncode(
+    JSON.stringify({ alg: algorithm, typ: "JWT" }),
+  );
   const payload = base64UrlEncode(
-    JSON.stringify({ userId, iat: now, exp: expiresAt })
+    JSON.stringify({ userId, iat: now, exp: expiresAt }),
   );
 
   const message = `${header}.${payload}`;
@@ -74,7 +79,9 @@ export async function generateToken(userId: number): Promise<string> {
   return `${message}.${signature}`;
 }
 
-export async function verifyToken(token: string): Promise<{ userId: number } | null> {
+export async function verifyToken(
+  token: string,
+): Promise<{ userId: number } | null> {
   try {
     const [headerB64, payloadB64, signatureB64] = token.split(".");
     if (!headerB64 || !payloadB64 || !signatureB64) {

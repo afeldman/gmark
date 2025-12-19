@@ -2,16 +2,15 @@
   "tasks": {
     "dev": "deno run --allow-net --allow-read --allow-write --allow-env --watch src/main.ts",
     "start": "deno run --allow-net --allow-read --allow-write --allow-env src/main.ts",
+    "test": "deno test --allow-net --allow-read --allow-write --allow-env",
+    "test:watch": "deno test --allow-net --allow-read --allow-write --allow-env --watch",
     "format": "deno fmt",
-    "lint": "deno lint"
+    "format:check": "deno fmt --check",
+    "lint": "deno lint --ignore=no-unused-vars,require-await",
+    "check": "deno check src/main.ts"
   },
   "imports": {
-    "hono": "https://deno.land/x/hono@4.2.0/",
-    "hono/": "https://deno.land/x/hono@4.2.0/",
-    "zod": "https://deno.land/x/zod@v3.22.4/mod.ts",
-    "jose": "https://deno.land/x/jose@4.15.4/mod.ts",
-    "dotenv": "https://deno.land/x/dotenv@3.2.2/mod.ts",
     "std/": "https://deno.land/std@0.208.0/",
-    "sql": "https://deno.land/x/sql@v0.5.0/mod.ts"
+    "std/assert": "https://deno.land/std@0.208.0/assert/mod.ts"
   }
 }

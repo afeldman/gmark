@@ -1,6 +1,6 @@
-import { Hono, Context } from "hono";
+import { Context, Hono } from "hono";
 import { bearerAuth } from "hono/middleware.ts";
-import { UserRegisterSchema, UserLoginSchema } from "../utils/schemas.ts";
+import { UserLoginSchema, UserRegisterSchema } from "../utils/schemas.ts";
 import * as UserService from "../services/user.ts";
 
 export const userRouter = new Hono();
@@ -34,7 +34,7 @@ userRouter.post("/register", async (c) => {
     const user = await UserService.registerUser(
       validated.username,
       validated.email,
-      validated.password
+      validated.password,
     );
 
     return c.json(user, 201);
@@ -57,7 +57,7 @@ userRouter.post("/login", async (c) => {
 
     const result = await UserService.loginUser(
       validated.username,
-      validated.password
+      validated.password,
     );
 
     return c.json(result, 200);

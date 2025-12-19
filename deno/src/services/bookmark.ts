@@ -10,7 +10,7 @@ export async function createBookmark(
     category?: string;
     notes?: string;
     folder_id?: number;
-  }
+  },
 ) {
   const db = getDB();
   return db.createBookmark(userId, title, url, data);
@@ -40,7 +40,7 @@ export async function updateBookmark(
     category: string;
     notes: string;
     folder_id: number;
-  }>
+  }>,
 ) {
   const db = getDB();
   const bookmark = db.getBookmarkById(id);
@@ -77,7 +77,7 @@ export async function deleteBookmark(id: number, userId: number) {
 export async function createFolder(
   userId: number,
   name: string,
-  parentId?: number
+  parentId?: number,
 ) {
   const db = getDB();
 
@@ -109,7 +109,7 @@ export async function getFolder(id: number) {
 export async function updateFolder(
   id: number,
   userId: number,
-  data: Partial<{ name: string; parent_id: number }>
+  data: Partial<{ name: string; parent_id: number }>,
 ) {
   const db = getDB();
   const folder = db.getFolderById(id);

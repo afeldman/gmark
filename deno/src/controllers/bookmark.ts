@@ -16,7 +16,7 @@ async function getUserIdFromToken(req: Request): Promise<number | null> {
     const padding = (4 - (payloadB64.length % 4)) % 4;
     const paddedPayload = payloadB64 + "=".repeat(padding);
     const decodedPayload = JSON.parse(
-      atob(paddedPayload.replace(/-/g, "+").replace(/_/g, "/"))
+      atob(paddedPayload.replace(/-/g, "+").replace(/_/g, "/")),
     );
     return decodedPayload.userId;
   } catch {
@@ -56,7 +56,7 @@ export async function handleBookmarkPost(req: Request): Promise<Response> {
           {
             status: 400,
             headers: { "Content-Type": "application/json" },
-          }
+          },
         );
       }
 
@@ -75,7 +75,7 @@ export async function handleBookmarkPost(req: Request): Promise<Response> {
             title,
             metadata?.description || description || "",
             metadata?.keywords || [],
-            { useOpenAI: true, useLocalLLM: true, usePatterns: true }
+            { useOpenAI: true, useLocalLLM: true, usePatterns: true },
           );
 
           // Übernehme nur wenn keine Werte gesetzt sind
@@ -105,7 +105,7 @@ export async function handleBookmarkPost(req: Request): Promise<Response> {
           category: finalCategory,
           notes,
           folder_id,
-        }
+        },
       );
 
       return new Response(JSON.stringify(bookmark), {
@@ -122,14 +122,14 @@ export async function handleBookmarkPost(req: Request): Promise<Response> {
           {
             status: 400,
             headers: { "Content-Type": "application/json" },
-          }
+          },
         );
       }
 
       const folder = await BookmarkService.createFolder(
         userId,
         name,
-        parent_id
+        parent_id,
       );
 
       return new Response(JSON.stringify(folder), {

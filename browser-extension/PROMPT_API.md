@@ -9,6 +9,7 @@ GMARK nutzt die **Chrome Prompt API** für lokale, On-Device LLM-basierte Klassi
 Die Extension nutzt folgende **Fallback-Strategie**:
 
 1. **Chrome Prompt API (Priorität: HÖCHST)** ⚡
+
    - Lokale On-Device LLM (Gemini Nano)
    - ✅ Keine API-Abhängigkeit
    - ✅ Schnellste Klassifikation
@@ -17,6 +18,7 @@ Die Extension nutzt folgende **Fallback-Strategie**:
    - ⚠️ Erstes Download des Modells kann 100MB+ sein
 
 2. **Backend Classification API (Fallback)** 🌐
+
    - Pattern-basierte Klassifikation
    - ✅ Funktioniert offline nach Download
    - ✅ Zuverlässig auf allen Systemen
@@ -42,6 +44,7 @@ const canUse = await window.ai.canCreateTextSession();
 ## Aktivierung (Chrome Browser)
 
 ### Voraussetzungen:
+
 - Chrome 131+ (die API wird schrittweise eingeführt)
 - 4GB+ RAM (für Modell-Inferenz)
 - ~100MB Speicher (Gemini Nano Modell)
@@ -49,17 +52,21 @@ const canUse = await window.ai.canCreateTextSession();
 ### Schritte:
 
 1. **Chrome Flags aktivieren:**
+
    ```
    chrome://flags/#prompt-api-for-gemini-nano
    ```
+
    → Auf "Enabled" setzen
 
 2. **Chrome Neustart:**
+
    ```
    chrome://restart
    ```
 
 3. **Extension laden:**
+
    - Gehe zu `chrome://extensions`
    - Schalte "Entwicklermodus" an
    - "Erweiterung laden" → `/browser-extension` Ordner
@@ -88,17 +95,20 @@ Die Prompt API klassifiziert URLs in folgende Kategorien:
 ## Performance
 
 ### Erste Nutzung (mit Modell-Download):
+
 - Download: ~100MB (einmalig)
 - Klassifikation: 2-5 Sekunden
 - Extension zeigt: "⏳ Laden Sie das lokale LLM-Modell..."
 
 ### Nachfolgende Nutzung (Modell gecacht):
+
 - Klassifikation: 200-800ms
 - ⚡ Ultra-schnell, offline verfügbar
 
 ## Datenschutz
 
 ✅ **Vollständiger Datenschutz mit Prompt API:**
+
 - Keine Daten verlassen den Browser
 - Keine Requests zu externen Servern
 - Lokale Verarbeitung auf deinem Gerät
@@ -106,6 +116,7 @@ Die Prompt API klassifiziert URLs in folgende Kategorien:
 - Keine Logs oder Telemetrie
 
 ⚠️ **Backend-Fallback:**
+
 - Bei Fallback zum Backend werden URL + Title gesendet
 - Aber: nur wenn Prompt API nicht verfügbar ist
 - Du kannst Backend-Klassifikation in Einstellungen deaktivieren
@@ -113,19 +124,25 @@ Die Prompt API klassifiziert URLs in folgende Kategorien:
 ## Troubleshooting
 
 ### Problem: "Prompt API nicht verfügbar"
+
 **Lösung:**
+
 1. Chrome Version prüfen: `chrome://version` → mind. 131
 2. Flag aktivieren: `chrome://flags/#prompt-api-for-gemini-nano`
 3. Chrome neustarten: `chrome://restart`
 
 ### Problem: Klassifikation dauert lange (erste Nutzung)
+
 **Lösung:**
+
 - Das ist normal beim ersten Download des Modells
 - Modell wird danach gecacht, zukünftige Klassifikationen sind schneller
 - Download läuft im Hintergrund
 
 ### Problem: "Classification fehlgeschlagen"
+
 **Lösung:**
+
 1. Fallback zu Backend wird automatisch versucht
 2. Prüfe Internet-Verbindung
 3. Prüfe ob Backend-Server läuft (auf Port 8000)
@@ -149,7 +166,7 @@ const result = await classifyWithPromptAPI(url, title);
 
 ```javascript
 // In Browser Console öffnen (F12):
-await window.ai.canCreateTextSession()
+await window.ai.canCreateTextSession();
 
 // Wenn "readily" oder "after-download" → Verfügbar!
 
@@ -170,6 +187,7 @@ F12 → Service Worker Console
 ## Zukunft
 
 **Geplant:**
+
 - [ ] Speichern von Klassifikations-Historie
 - [ ] Modell-Optimierung für Bookmark-Kategorien
 - [ ] Lokale Model Fine-Tuning basierend auf User-Feedback

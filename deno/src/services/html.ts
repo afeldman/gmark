@@ -9,7 +9,8 @@ export async function fetchHtmlContent(url: string): Promise<string | null> {
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
       signal: AbortSignal.timeout(5000), // 5 Sekunde Timeout
     });
@@ -41,7 +42,9 @@ export function extractTitle(html: string): string | null {
     }
 
     // Try og:title meta tag
-    const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i);
+    const ogTitleMatch = html.match(
+      /<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i,
+    );
     if (ogTitleMatch && ogTitleMatch[1]) {
       return decodeHTML(ogTitleMatch[1]);
     }
@@ -67,13 +70,17 @@ export function extractTitle(html: string): string | null {
 export function extractDescription(html: string): string | null {
   try {
     // Try meta description tag
-    const descMatch = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i);
+    const descMatch = html.match(
+      /<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i,
+    );
     if (descMatch && descMatch[1]) {
       return decodeHTML(descMatch[1]);
     }
 
     // Try og:description meta tag
-    const ogDescMatch = html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i);
+    const ogDescMatch = html.match(
+      /<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i,
+    );
     if (ogDescMatch && ogDescMatch[1]) {
       return decodeHTML(ogDescMatch[1]);
     }
@@ -95,14 +102,20 @@ export function extractKeywords(html: string): string[] {
     const keywords: string[] = [];
 
     // Try meta keywords tag
-    const keywordsMatch = html.match(/<meta\s+name=["']keywords["']\s+content=["']([^"']+)["']/i);
+    const keywordsMatch = html.match(
+      /<meta\s+name=["']keywords["']\s+content=["']([^"']+)["']/i,
+    );
     if (keywordsMatch && keywordsMatch[1]) {
-      const kw = keywordsMatch[1].split(",").map((k) => k.trim()).filter((k) => k);
+      const kw = keywordsMatch[1].split(",").map((k) => k.trim()).filter((k) =>
+        k
+      );
       keywords.push(...kw);
     }
 
     // Try Open Graph tags (category, type)
-    const ogTypeMatch = html.match(/<meta\s+property=["']og:type["']\s+content=["']([^"']+)["']/i);
+    const ogTypeMatch = html.match(
+      /<meta\s+property=["']og:type["']\s+content=["']([^"']+)["']/i,
+    );
     if (ogTypeMatch && ogTypeMatch[1]) {
       keywords.push(ogTypeMatch[1]);
     }

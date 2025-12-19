@@ -8,7 +8,7 @@ envFile.split("\n").forEach((line) => {
       valueParts
         .join("=")
         .trim()
-        .replace(/^"(.*)"$/, "$1")
+        .replace(/^"(.*)"$/, "$1"),
     );
   }
 });
@@ -18,7 +18,7 @@ import * as UserService from "./services/user.ts";
 import * as BookmarkService from "./controllers/bookmark.ts";
 import * as HtmlService from "./services/html.ts";
 import * as AiService from "./services/ai.ts";
-import { getDB, closeDB } from "./utils/db.ts";
+import { closeDB, getDB } from "./utils/db.ts";
 
 // Initialisiere DB
 getDB();
@@ -130,7 +130,7 @@ async function handleClassificationPost(req: Request): Promise<Response> {
       metadata?.title || "Untitled",
       metadata?.description || "",
       metadata?.keywords || [],
-      { useOpenAI: true, useLocalLLM: true, usePatterns: true }
+      { useOpenAI: true, useLocalLLM: true, usePatterns: true },
     );
 
     return new Response(
@@ -142,7 +142,7 @@ async function handleClassificationPost(req: Request): Promise<Response> {
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";

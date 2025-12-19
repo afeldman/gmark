@@ -107,7 +107,11 @@ class SimpleDB {
   }
 
   // ==================== Folders ====================
-  createFolder(user_id: number, name: string, parent_id?: number): BookmarkFolder {
+  createFolder(
+    user_id: number,
+    name: string,
+    parent_id?: number,
+  ): BookmarkFolder {
     const id = this.nextFolderId++;
     const folder: BookmarkFolder = {
       id,
@@ -133,7 +137,11 @@ class SimpleDB {
     return this.folders.get(id) || null;
   }
 
-  updateFolder(id: number, name?: string, parent_id?: number): BookmarkFolder | null {
+  updateFolder(
+    id: number,
+    name?: string,
+    parent_id?: number,
+  ): BookmarkFolder | null {
     const folder = this.folders.get(id);
     if (!folder) return null;
 
@@ -160,7 +168,7 @@ class SimpleDB {
       category?: string;
       notes?: string;
       folder_id?: number;
-    }
+    },
   ): Bookmark {
     const id = this.nextBookmarkId++;
     const bookmark: Bookmark = {
