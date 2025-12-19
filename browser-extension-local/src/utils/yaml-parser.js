@@ -97,6 +97,8 @@ export function parseSimpleYAML(yamlText) {
       }
 
       currentKey = key;
+    }
+  }
 
   return result;
 }
