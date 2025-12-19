@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GMARK - Einstellungen</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: #f8f9fa;
+        padding: 40px 20px;
+      }
+
+      .container {
+        max-width: 700px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 32px;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 32px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e9ecef;
+      }
+
+      .header h1 {
+        font-size: 28px;
+        color: #1a1a1a;
+      }
+
+      .logo {
+        font-size: 36px;
+      }
+
+      .section {
+        margin-bottom: 32px;
+      }
+
+      .section h2 {
+        font-size: 18px;
+        color: #333;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #495057;
+      }
+
+      input[type="text"],
+      input[type="url"],
+      input[type="password"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: #0066cc;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+      }
+
+      .checkbox-group {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 12px;
+      }
+
+      .checkbox-group input[type="checkbox"] {
+        margin-top: 2px;
+      }
+
+      .checkbox-group label {
+        margin: 0;
+        font-weight: 400;
+        flex: 1;
+      }
+
+      .hint {
+        font-size: 12px;
+        color: #6c757d;
+        margin-top: 4px;
+      }
+
+      .status {
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        display: none;
+      }
+
+      .status.show {
+        display: block;
+      }
+
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .status.info {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      button {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: #0066cc;
+        color: white;
+        flex: 1;
+      }
+
+      .btn-primary:hover {
+        background: #0052a3;
+      }
+
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background: #545b62;
+      }
+
+      .btn-danger {
+        background: #dc3545;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #c82333;
+      }
+
+      .info-box {
+        background: #e7f3ff;
+        border-left: 4px solid #0066cc;
+        padding: 16px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+      }
+
+      .info-box h3 {
+        font-size: 14px;
+        margin-bottom: 8px;
+        color: #004085;
+      }
+
+      .info-box p {
+        font-size: 13px;
+        color: #004085;
+        line-height: 1.5;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        margin-top: 20px;
+      }
+
+      .stat-card {
+        background: #f8f9fa;
+        padding: 16px;
+        border-radius: 6px;
+        text-align: center;
+      }
+
+      .stat-value {
+        font-size: 24px;
+        font-weight: 600;
+        color: #0066cc;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        color: #6c757d;
+        margin-top: 4px;
+      }
+
+      .divider {
+        height: 1px;
+        background: #e9ecef;
+        margin: 32px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <span class="logo">🔖</span>
+        <h1>GMARK Einstellungen</h1>
+      </div>
+
+      <div id="statusMessage" class="status"></div>
+
+      <!-- API Configuration -->
+      <div class="section">
+        <h2>🌐 Server-Verbindung</h2>
+
+        <div class="form-group">
+          <label for="apiEndpoint">API-Endpoint</label>
+          <input
+            type="url"
+            id="apiEndpoint"
+            placeholder="http://localhost:8000"
+          />
+          <div class="hint">Die Adresse Ihres GMARK Backend-Servers</div>
+        </div>
+      </div>
+
+      <!-- Authentication -->
+      <div class="section">
+        <h2>🔐 Authentifizierung</h2>
+
+        <div class="form-group">
+          <label for="username">Benutzername</label>
+          <input type="text" id="username" placeholder="Ihr Benutzername" />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Passwort</label>
+          <input type="password" id="password" placeholder="Ihr Passwort" />
+        </div>
+
+        <button id="loginBtn" class="btn-primary">🔓 Anmelden</button>
+        <button id="logoutBtn" class="btn-secondary" style="margin-left: 12px">
+          🔒 Abmelden
+        </button>
+
+        <div
+          id="authStatus"
+          class="info-box"
+          style="margin-top: 20px; display: none"
+        >
+          <h3>✅ Angemeldet</h3>
+          <p>Token aktiv bis: <span id="tokenExpiry"></span></p>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- AI Preferences -->
+      <div class="section">
+        <h2>🤖 AI-Einstellungen</h2>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="autoClassify" checked />
+          <label for="autoClassify">
+            <strong>Automatische Klassifikation</strong><br />
+            <span class="hint"
+              >Neue Bookmarks automatisch mit AI analysieren</span
+            >
+          </label>
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="preferLocalAI" checked />
+          <label for="preferLocalAI">
+            <strong>Lokale AI bevorzugen</strong><br />
+            <span class="hint"
+              >Chrome AI oder AnythingLLM vor OpenAI nutzen</span
+            >
+          </label>
+        </div>
+
+        <div class="info-box">
+          <h3>💡 Chrome AI (Gemini Nano)</h3>
+          <p>
+            Für Chrome AI benötigen Sie Chrome 127+ (Canary/Dev) und müssen
+            <code>chrome://flags/#optimization-guide-on-device-model</code>
+            aktivieren.
+          </p>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Display Options -->
+      <div class="section">
+        <h2>👁️ Anzeige-Optionen</h2>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="highlightBookmarks" />
+          <label for="highlightBookmarks">
+            <strong>Gespeicherte Links hervorheben</strong><br />
+            <span class="hint"
+              >Bereits gespeicherte Bookmarks auf Webseiten markieren</span
+            >
+          </label>
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="showNotifications" checked />
+          <label for="showNotifications">
+            <strong>Benachrichtigungen anzeigen</strong><br />
+            <span class="hint"
+              >Desktop-Benachrichtigungen beim Speichern von Bookmarks</span
+            >
+          </label>
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="enableSync" />
+          <label for="enableSync">
+            <strong>Periodische Synchronisation</strong><br />
+            <span class="hint"
+              >Bookmarks alle 30 Minuten vom Server abrufen</span
+            >
+          </label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Statistics -->
+      <div class="section">
+        <h2>📊 Statistiken</h2>
+
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-value" id="totalBookmarks">-</div>
+            <div class="stat-label">Gespeicherte Bookmarks</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="totalFolders">-</div>
+            <div class="stat-label">Ordner</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="lastSync">-</div>
+            <div class="stat-label">Letzte Synchronisation</div>
+          </div>
+        </div>
+
+        <button
+          id="refreshStatsBtn"
+          class="btn-secondary"
+          style="margin-top: 16px"
+        >
+          🔄 Aktualisieren
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Actions -->
+      <div class="button-group">
+        <button id="saveSettingsBtn" class="btn-primary">
+          💾 Einstellungen speichern
+        </button>
+        <button id="clearCacheBtn" class="btn-danger">🗑️ Cache leeren</button>
+      </div>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>
