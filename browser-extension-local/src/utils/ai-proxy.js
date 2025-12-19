@@ -10,16 +10,46 @@ let workerTabId = null;
 let workerReadyPromise = null;
 
 /**
+ * Warte auf Heartbeat vom Worker (signalisiert dass Listener registriert ist)
+ */
+async function waitForWorkerHeartbeat(tabId, timeout = 2000) {
+  console.log("  👂 Warte auf Worker Heartbeat...");
+  
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      console.warn("  ⚠️ Heartbeat Timeout nach", timeout, "ms");
+      resolve(false);
+    }, timeout);
+
+    // Registriere einmaligen Listener für Heartbeat
+    const listener = (message, sender) => {
+      if (sender.tabId === tabId && message.type === "WORKER_READY") {
+        clearTimeout(timeoutId);
+        chrome.runtime.onMessage.removeListener(listener);
+        console.log("  ❤️ Heartbeat empfangen! Worker ist bereit");
+        resolve(true);
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(listener);
+  });
+}
+
+/**
  * Warte bis Worker Tab vollständig geladen ist
  */
 async function waitForWorkerReady(tabId, timeout = 3000) {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeout) {
     try {
       const tab = await chrome.tabs.get(tabId);
       if (tab.status === "complete") {
         console.log("  ✅ Worker Tab vollständig geladen");
+        
+        // Warte zusätzlich auf Heartbeat vom Script
+        await waitForWorkerHeartbeat(tabId, 2000);
+        
         return true;
       }
       await new Promise((r) => setTimeout(r, 100));
@@ -28,7 +58,7 @@ async function waitForWorkerReady(tabId, timeout = 3000) {
       return false;
     }
   }
-  
+
   console.warn("  ⚠️ Worker Tab Timeout nach", timeout, "ms");
   return true; // Versuche trotzdem
 }
@@ -60,7 +90,7 @@ async function getWorkerTab() {
   });
 
   console.log("  ⏳ Warte bis Tab geladen ist...", tab.id);
-  
+
   // Warte bis Tab vollständig geladen ist
   await waitForWorkerReady(tab.id);
 
@@ -84,34 +114,33 @@ async function sendToWorker(action, data = {}, retries = 2) {
           reject(new Error("Message timeout - no response from worker"));
         }, 2000);
 
-        chrome.tabs.sendMessage(
-          tabId,
-          { action, ...data },
-          (response) => {
-            clearTimeout(timeoutId);
+        chrome.tabs.sendMessage(tabId, { action, ...data }, (response) => {
+          clearTimeout(timeoutId);
 
-            if (chrome.runtime.lastError) {
-              reject(new Error(chrome.runtime.lastError.message));
-              return;
-            }
-
-            if (!response) {
-              reject(new Error("No response from worker"));
-              return;
-            }
-
-            if (!response.success) {
-              reject(new Error(response.error));
-              return;
-            }
-
-            resolve(response.result);
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
           }
-        );
+
+          if (!response) {
+            reject(new Error("No response from worker"));
+            return;
+          }
+
+          if (!response.success) {
+            reject(new Error(response.error));
+            return;
+          }
+
+          resolve(response.result);
+        });
       });
     } catch (error) {
       lastError = error;
-      console.warn(`  ⚠️ Versuch ${attempt + 1} fehlgeschlagen:`, error.message);
+      console.warn(
+        `  ⚠️ Versuch ${attempt + 1} fehlgeschlagen:`,
+        error.message
+      );
 
       if (attempt < retries) {
         console.log(`  🔄 Versuche erneut (${retries - attempt} übrig)...`);
