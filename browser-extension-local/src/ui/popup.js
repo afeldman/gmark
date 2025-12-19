@@ -4,17 +4,23 @@
 
 import StorageManager from "../utils/storage.js";
 
+console.log("📱 Popup.js loading...");
+
 const app = {
   state: "main",
   settings: {},
 
   async init() {
+    console.log("📱 App initializing...");
     this.showLoading();
     try {
+      console.log("📱 Sending GET_BOOTSTRAP_STATUS message...");
       // Überprüfe ob Bootstrap nötig ist
       const bootstrapStatus = await chrome.runtime.sendMessage({
         type: "GET_BOOTSTRAP_STATUS",
       });
+
+      console.log("📱 Bootstrap status:", bootstrapStatus);
 
       if (!bootstrapStatus.complete) {
         this.showView("bootstrap");
@@ -26,6 +32,7 @@ const app = {
       this.attachEventListeners();
       this.showView("main");
     } catch (error) {
+      console.error("📱 Error in app.init:", error);
       this.showError(error.message);
     }
   },
@@ -479,4 +486,17 @@ function escapeHtml(text) {
 }
 
 // Init
-document.addEventListener("DOMContentLoaded", () => app.init());
+console.log("📱 Adding DOMContentLoaded listener...");
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("📱 DOMContentLoaded fired, calling app.init()");
+  try {
+    app.init().catch((error) => {
+      console.error("📱 Unhandled error in app.init:", error);
+      document.body.innerHTML = `<div style="padding: 20px; color: red;"><h2>Fehler beim Laden des Popups</h2><p>${error.message}</p><details><pre>${error.stack}</pre></details></div>`;
+    });
+  } catch (error) {
+    console.error("📱 Synchronous error:", error);
+  }
+});
+
+console.log("📱 Popup.js loaded successfully");
