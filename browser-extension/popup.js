@@ -62,13 +62,13 @@ async function loadFolders() {
 
     const response = await fetch(`${endpoint}/api/folders`, {
       headers: {
-        token: config.authToken,
+        Authorization: `Bearer ${config.authToken}`,
       },
     });
 
     if (response.ok) {
       const data = await response.json();
-      populateFolderSelect(data.folders);
+      populateFolderSelect(data.folders || []);
     }
   } catch (error) {
     console.error("Failed to load folders:", error);
@@ -184,18 +184,96 @@ Respond with JSON:
 }
 
 // Classify with backend API
-async function classifyWithBackend(content) {
+async function classifyWithBackend() {
   const config = await chrome.storage.sync.get(["apiEndpoint", "authToken"]);
   const endpoint = config.apiEndpoint || "http://localhost:8000";
-
-  // Backend will handle classification
   const aiStatusText = document.getElementById("aiStatusText");
-  aiStatusText.textContent = "🌐 Backend-AI klassifiziert...";
 
-  // For now, just indicate backend will handle it
-  setTimeout(() => {
-    document.getElementById("aiStatus").classList.add("hidden");
-  }, 1500);
+  try {
+    aiStatusText.textContent = "🔍 Analysiere URL mit Backend-AI...";
+
+    // Rufe Classification Endpoint auf
+    const response = await fetch(`${endpoint}/api/bookmarks/classify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.authToken}`,
+      },
+      body: JSON.stringify({
+        url: currentTab.url,
+      }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      aiClassification = result.classification;
+
+      // Populate form fields mit Klassifikation
+      if (result.metadata?.title && !document.getElementById("title").value) {
+        document.getElementById("title").value = result.metadata.title;
+      }
+
+      if (
+        result.metadata?.description &&
+        !document.getElementById("description").value
+      ) {
+        document.getElementById("description").value =
+          result.metadata.description;
+      }
+
+      // Display classification
+      displayBackendClassification(result.classification);
+
+      aiStatusText.textContent = `✅ Klassifiziert als "${
+        result.classification.category
+      }" (${Math.round(result.classification.confidence * 100)}%)`;
+      setTimeout(() => {
+        document.getElementById("aiStatus").classList.add("hidden");
+      }, 3000);
+    } else {
+      throw new Error("Classification failed");
+    }
+  } catch (error) {
+    console.error("Backend classification error:", error);
+    aiStatusText.textContent =
+      "⚠️ Classification fehlgeschlagen, verwende Defaults";
+    setTimeout(() => {
+      document.getElementById("aiStatus").classList.add("hidden");
+    }, 2000);
+  }
+}
+
+// Display backend classification results
+function displayBackendClassification(classification) {
+  // Show category
+  const categoryBadge = document.getElementById("categoryBadge");
+  if (!categoryBadge) {
+    const badge = document.createElement("div");
+    badge.id = "categoryBadge";
+    badge.className = "category-badge";
+    document
+      .getElementById("aiStatus")
+      .parentElement.insertBefore(badge, document.getElementById("aiStatus"));
+  }
+
+  const badge = document.getElementById("categoryBadge");
+  badge.textContent = `📁 ${classification.category}`;
+  badge.classList.remove("hidden");
+
+  // Show tags
+  if (classification.tags && classification.tags.length > 0) {
+    const keywordsList = document.getElementById("keywordsList");
+    keywordsList.innerHTML = "";
+
+    classification.tags.forEach((tag) => {
+      const tagEl = document.createElement("span");
+      tagEl.className = "keyword-tag";
+      tagEl.textContent = tag;
+      keywordsList.appendChild(tag);
+    });
+
+    document.getElementById("keywordsDisplay").classList.remove("hidden");
+  }
 }
 
 // Display classification results
@@ -249,18 +327,22 @@ async function saveBookmark() {
     const endpoint = config.apiEndpoint || "http://localhost:8000";
 
     const bookmarkData = {
-      url: document.getElementById("url").value,
       title: document.getElementById("title").value,
+      url: document.getElementById("url").value,
       description: document.getElementById("description").value,
-      folder_path: document.getElementById("folderPath").value,
-      auto_classify: document.getElementById("autoClassify").checked,
+      tags: Array.from(
+        document.querySelectorAll("#keywordsList .keyword-tag")
+      ).map((t) => t.textContent),
+      category: aiClassification?.category || null,
+      folder_id: document.getElementById("folderPath").value,
+      autoClassify: document.getElementById("autoClassify").checked,
     };
 
     const response = await fetch(`${endpoint}/api/bookmarks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        token: config.authToken,
+        Authorization: `Bearer ${config.authToken}`,
       },
       body: JSON.stringify(bookmarkData),
     });
@@ -280,7 +362,7 @@ async function saveBookmark() {
       setTimeout(() => window.close(), 1000);
     } else {
       const error = await response.json();
-      showStatus(`❌ Fehler: ${error.detail || "Unbekannter Fehler"}`, "error");
+      showStatus(`❌ Fehler: ${error.error || "Unbekannter Fehler"}`, "error");
     }
   } catch (error) {
     console.error("Save error:", error);
