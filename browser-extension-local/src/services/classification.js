@@ -189,7 +189,7 @@ export class ClassificationService {
 
     // Score jede Kategorie
     for (const [category, data] of Object.entries(CATEGORIES)) {
-      let score = 0;
+      let score = 0.0;
 
       // Debug einzelne Kategorien
       console.log(`  Category "${category}":`, {
@@ -203,7 +203,7 @@ export class ClassificationService {
       // Safety check - wenn patterns nicht existiert, skip
       if (!data || !Array.isArray(data.patterns)) {
         console.warn(`  ⚠️ Category "${category}" hat keine patterns array`);
-        scores[category] = 0;
+        scores[category] = 0.0;
         continue;
       }
 
