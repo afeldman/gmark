@@ -9,11 +9,13 @@
 
 /**
  * Check if Prompt API is available
- * @param {any} ai - Window.ai object
+ * @param {any} ai - AI object (from self.ai or globalThis.ai)
  * @returns {boolean}
  */
 export function isPromptAPIAvailable(ai) {
-  return ai?.languageModel !== undefined;
+  const available = ai?.languageModel !== undefined;
+  console.log("🔍 isPromptAPIAvailable:", available);
+  return available;
 }
 
 /**
@@ -23,11 +25,27 @@ export function isPromptAPIAvailable(ai) {
  */
 export async function checkCanCreateSession(statusCallback) {
   try {
-    const status = await window.ai?.languageModel?.canCreateTextSession?.();
+    console.log("🔍 Checking Prompt API availability...");
+    // Service Worker verwendet self statt window
+    const ai = self.ai || globalThis.ai;
+    const hasLM = !!ai?.languageModel;
+    console.log("  AI object available:", !!ai);
+    console.log("  languageModel available:", hasLM);
+
+    if (!hasLM || typeof ai.languageModel.canCreateTextSession !== "function") {
+      console.log("  ❌ AI available: false");
+      if (statusCallback) statusCallback("no");
+      return false;
+    }
+
+    const status = await ai.languageModel.canCreateTextSession();
+    const canCreate = status === "readily" || status === "after-download";
+    console.log("  📊 Prompt API status:", status, "| canCreate:", canCreate);
+
     if (statusCallback) {
       statusCallback(status);
     }
-    return status !== "no";
+    return canCreate;
   } catch (error) {
     console.error("❌ Error checking Prompt API availability:", error);
     return false;
@@ -43,10 +61,23 @@ export async function checkCanCreateSession(statusCallback) {
  */
 export async function createLanguageModelSession(options) {
   try {
-    const session = await window.ai?.languageModel?.create?.(options);
+    console.log("🔧 Creating language model session...");
+    // Service Worker verwendet self statt window
+    const ai = self.ai || globalThis.ai;
+    const canCreateFn = ai?.languageModel?.create;
+    console.log("  AI available:", !!ai);
+    console.log("  create() available:", typeof canCreateFn === "function");
+
+    if (typeof canCreateFn !== "function") {
+      console.error("  ❌ AI available: false (no create function)");
+      return null;
+    }
+
+    const session = await ai.languageModel.create(options);
     if (!session) {
       throw new Error("Failed to create language model session");
     }
+    console.log("  ✅ Session created successfully");
     return session;
   } catch (error) {
     console.error("❌ Failed to create language model session:", error);
@@ -62,11 +93,14 @@ export async function createLanguageModelSession(options) {
  */
 export async function classifyWithAI(session, prompt) {
   try {
+    console.log("🤖 Classifying with AI...");
     if (!session) {
       throw new Error("Session is null or undefined");
     }
 
+    console.log("  📤 Sending prompt to AI model...");
     const response = await session.prompt(prompt);
+    console.log("  📥 Received AI response");
 
     // Parse JSON response
     const parsed = JSON.parse(response);
@@ -75,6 +109,12 @@ export async function classifyWithAI(session, prompt) {
     if (!parsed.category || typeof parsed.confidence !== "number") {
       throw new Error("Invalid response structure from AI model");
     }
+
+    console.log(
+      "  ✅ Classification successful:",
+      parsed.category,
+      `(${parsed.confidence})`
+    );
 
     return {
       category: parsed.category,
@@ -96,7 +136,9 @@ export async function classifyWithAI(session, prompt) {
 export function safeDestroySession(session) {
   try {
     if (session && typeof session.destroy === "function") {
+      console.log("🗑️ Destroying AI session...");
       session.destroy();
+      console.log("  ✅ Session destroyed");
     }
   } catch (error) {
     console.warn("⚠️ Warning destroying session:", error);

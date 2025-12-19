@@ -22,6 +22,7 @@
 ### ✅ Test 1: Installation & Bootstrap
 
 **Erwartete Console-Ausgabe:**
+
 ```
 ============================================================
 🚀 GMARK Local Extension installiert!
@@ -44,6 +45,7 @@
 ```
 
 **Was zu prüfen:**
+
 - ✅ Kontextmenüs wurden erstellt
 - ✅ Standardeinstellungen gesetzt
 - ✅ Bootstrap läuft automatisch
@@ -56,6 +58,7 @@
 3. Wähle **"In GMARK speichern"**
 
 **Erwartete Console-Ausgabe:**
+
 ```
 📌 Kontextmenü geklickt: gmark-save-page
   Tab: GitHub: Let's build from here · GitHub
@@ -76,6 +79,7 @@
 ```
 
 **Was zu prüfen:**
+
 - ✅ Seiten-Inhalt extrahiert
 - ✅ Duplikat-Prüfung durchgeführt
 - ✅ Bookmark gespeichert mit ID
@@ -88,6 +92,7 @@
 3. Bookmarks werden geladen
 
 **Erwartete Console-Ausgabe:**
+
 ```
 📨 Message empfangen: GET_BOOKMARKS
   Von: Extension
@@ -97,6 +102,7 @@
 ```
 
 **Was zu prüfen:**
+
 - ✅ Message empfangen
 - ✅ Anzahl Bookmarks korrekt
 - ✅ Bookmarks im Popup angezeigt
@@ -107,6 +113,7 @@
 2. Bookmark wird gelöscht
 
 **Erwartete Console-Ausgabe:**
+
 ```
 📨 Message empfangen: DELETE_BOOKMARK
   Von: Extension
@@ -116,6 +123,7 @@
 ```
 
 **Was zu prüfen:**
+
 - ✅ Bookmark gelöscht
 - ✅ UI aktualisiert
 
@@ -125,6 +133,7 @@
 2. Status sollte angezeigt werden
 
 **Erwartete Console-Ausgabe:**
+
 ```
 📨 Message empfangen: GET_BOOTSTRAP_STATUS
   Von: Extension
@@ -134,6 +143,7 @@
 ```
 
 **Was zu prüfen:**
+
 - ✅ Status korrekt angezeigt
 - ✅ Bootstrap-Datum vorhanden
 
@@ -142,6 +152,7 @@
 1. Versuche denselben Link zweimal zu speichern
 
 **Erwartete Console-Ausgabe:**
+
 ```
 💾 saveBookmark() gestartet
   📄 Bookmark: Example Site
@@ -152,6 +163,7 @@
 ```
 
 **Was zu prüfen:**
+
 - ✅ Duplikat erkannt
 - ✅ Fehler-Meldung angezeigt
 - ✅ Bookmark nicht doppelt gespeichert
@@ -161,6 +173,7 @@
 1. Im Popup auf "Statistiken" klicken
 
 **Erwartete Console-Ausgabe:**
+
 ```
 📨 Message empfangen: GET_STATISTICS
   Von: Extension
@@ -170,6 +183,7 @@
 ```
 
 **Was zu prüfen:**
+
 - ✅ Statistiken korrekt
 - ✅ Kategorien richtig gezählt
 
@@ -178,6 +192,7 @@
 1. Im Popup auf "Export" klicken
 
 **Erwartete Console-Ausgabe:**
+
 ```
 📨 Message empfangen: EXPORT_DATA
   Von: Extension
@@ -187,6 +202,7 @@
 ```
 
 **Was zu prüfen:**
+
 - ✅ JSON-Export funktioniert
 - ✅ Alle Bookmarks enthalten
 
@@ -226,12 +242,14 @@ Nach dem Bootstrap sollten die Chrome Bookmarks reorganisiert sein:
 ### Problem: "Cannot read property of undefined"
 
 **Lösung:** Content Script nicht geladen
+
 - Seite neu laden (F5)
 - Extension neu laden
 
 ### Problem: Bootstrap läuft nicht
 
-**Lösung:** 
+**Lösung:**
+
 1. Console öffnen: `BootstrapService.getBootstrapStatus()`
 2. Wenn `completed: true`, Reset: `BootstrapService.resetBootstrap()`
 3. Extension neu laden
@@ -239,12 +257,14 @@ Nach dem Bootstrap sollten die Chrome Bookmarks reorganisiert sein:
 ### Problem: Prompt API nicht verfügbar
 
 **Erwartete Console-Ausgabe:**
+
 ```
 ℹ️ Prompt API Status: not-available
 ❌ Prompt API not available on this device
 ```
 
 **Info:** Prompt API benötigt Chrome Canary/Dev mit aktiviertem Flag:
+
 - `chrome://flags/#prompt-api-for-gemini-nano`
 - Flag auf "Enabled" setzen
 - Chrome neu starten
@@ -254,6 +274,7 @@ Nach dem Bootstrap sollten die Chrome Bookmarks reorganisiert sein:
 ### Problem: Service Worker stoppt nach einiger Zeit
 
 **Lösung:** Normal in Chrome - Service Worker schlafen nach Inaktivität
+
 - Klicke auf "Service Worker" Link um neu zu starten
 - Logs gehen verloren, neue Aktionen erzeugen neue Logs
 
@@ -270,6 +291,7 @@ Nach dem Bootstrap sollten die Chrome Bookmarks reorganisiert sein:
 ### Zu langsam?
 
 Console-Logs zeigen Performance-Bottlenecks:
+
 - Prompt API langsam → Nutze Pattern-Matching
 - IndexedDB langsam → Zu viele Bookmarks? Index prüfen
 - Bootstrap langsam → Rate Limiting in bootstrap.js anpassen
@@ -309,6 +331,7 @@ npm run build
 ## Support
 
 Bei Problemen:
+
 1. Console-Logs prüfen (F12 → Console)
 2. Service Worker neu starten
 3. Extension neu laden

@@ -48,6 +48,17 @@ chrome.runtime.onInstalled.addListener(async () => {
   console.log("🔧 Starte Bootstrap-Prozess...");
   console.log("=".repeat(60) + "\n");
 
+  // Tageslimit-Defaults für KI
+  console.log("\n⚙️ Setze Token-Limits...");
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(
+    today.getMonth() + 1
+  ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  await StorageManager.setSetting("dailyTokenLimit", 10000);
+  await StorageManager.setSetting("dailyTokensUsed", 0);
+  await StorageManager.setSetting("tokensLastReset", todayKey);
+  console.log("  ✅ dailyTokenLimit = 10000, reset heute");
+
   await BootstrapService.runBootstrap((progress) => {
     console.log(
       `⏳ Bootstrap Progress: ${progress.processed}/${progress.total} (${progress.percentage}%) | ✅ ${progress.success} | ❌ ${progress.failed} | ⏭️ ${progress.skipped}`
@@ -108,6 +119,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     StorageManager.deleteBookmark(message.id)
       .then(() => {
         console.log("  ✅ Bookmark gelöscht");
+        // Leere Ordner bereinigen
+        BootstrapService.deleteEmptyBookmarkFolders().catch((e) => {
+          console.warn("  ⚠️ Fehler bei Ordner-Bereinigung:", e);
+        });
         sendResponse({ success: true });
       })
       .catch((error) => {
@@ -224,6 +239,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Chrome Bookmark-Events: leere Ordner global bereinigen
+chrome.bookmarks.onRemoved.addListener(async () => {
+  console.log("\n🧹 onRemoved: Prüfe und lösche leere Ordner...");
+  try {
+    await BootstrapService.deleteEmptyBookmarkFolders();
+    console.log("  ✅ Bereinigung abgeschlossen");
+  } catch (error) {
+    console.warn("  ⚠️ Bereinigung fehlgeschlagen:", error);
+  }
+});
+
 async function savePage(url, title, tabId) {
   console.log("\n💾 savePage() gestartet");
   console.log("  URL:", url);
@@ -231,24 +257,17 @@ async function savePage(url, title, tabId) {
   console.log("  Tab ID:", tabId);
 
   try {
+    // Prüfe ob Bootstrap abgeschlossen ist
+    const bootstrapComplete = await StorageManager.getSetting(
+      "bootstrapComplete"
+    );
+
     // Extract Seiten-Inhalt vom Tab
     console.log("  📖 Extrahiere Seiten-Inhalt...");
     const response = await chrome.tabs.sendMessage(tabId, {
       type: "GET_PAGE_CONTENT",
     });
     console.log("  ✅ Inhalt extrahiert");
-
-    const bookmark = {
-      url,
-      title: title || "Untitled",
-      content: response.content || "",
-      description: response.description || "",
-      screenshot: response.screenshot || "",
-      category: "Uncategorized",
-      tags: [],
-      summary: "",
-      confidenceScore: 0,
-    };
 
     // Duplikate prüfen
     console.log("  🔍 Prüfe auf Duplikate...");
@@ -262,9 +281,60 @@ async function savePage(url, title, tabId) {
       chrome.runtime.sendMessage({
         type: "DUPLICATE_FOUND",
         existing,
-        new: bookmark,
+        new: { url, title },
       });
       return;
+    }
+
+    let bookmark;
+
+    // Wenn Bootstrap abgeschlossen ist, nutze KI automatisch
+    if (bootstrapComplete) {
+      console.log(
+        "  🤖 Bootstrap abgeschlossen - nutze KI für Klassifikation..."
+      );
+
+      // Importiere ClassificationService
+      const ClassificationService = (
+        await import("./services/classification.js")
+      ).default;
+
+      const classification = await ClassificationService.classify({
+        title: title || "Untitled",
+        description: response.description || "",
+        url: url,
+      });
+
+      bookmark = {
+        url,
+        title: title || "Untitled",
+        content: response.content || "",
+        description: response.description || "",
+        screenshot: response.screenshot || "",
+        category: classification.category,
+        tags: classification.tags,
+        summary: classification.summary,
+        confidence: classification.confidence,
+        color: classification.color,
+        method: "ai-classification",
+      };
+
+      console.log(
+        `  ✅ KI-Klassifikation: ${classification.category} (${classification.confidence})`
+      );
+    } else {
+      // Vor Bootstrap: Standard-Klassifikation
+      bookmark = {
+        url,
+        title: title || "Untitled",
+        content: response.content || "",
+        description: response.description || "",
+        screenshot: response.screenshot || "",
+        category: "Uncategorized",
+        tags: [],
+        summary: "",
+        confidenceScore: 0,
+      };
     }
 
     // Speichern
@@ -272,12 +342,14 @@ async function savePage(url, title, tabId) {
     const saved = await StorageManager.addBookmark(bookmark);
     console.log("  ✅ Bookmark gespeichert:", saved.id);
 
-    // Klassifikation im Hintergrund
-    console.log("  🏷️ Triggere Klassifikation...");
-    chrome.runtime.sendMessage({
-      type: "CLASSIFY_BOOKMARK",
-      bookmarkId: saved.id,
-    });
+    // Wenn noch nicht klassifiziert (vor Bootstrap), triggere Klassifikation im Hintergrund
+    if (!bootstrapComplete) {
+      console.log("  🏷️ Triggere Klassifikation...");
+      chrome.runtime.sendMessage({
+        type: "CLASSIFY_BOOKMARK",
+        bookmarkId: saved.id,
+      });
+    }
 
     return saved;
   } catch (error) {
@@ -302,9 +374,50 @@ async function saveBookmark(bookmark) {
       throw new Error("Duplikat erkannt");
     }
 
+    // Prüfe ob Bootstrap abgeschlossen ist
+    const bootstrapComplete = await StorageManager.getSetting(
+      "bootstrapComplete"
+    );
+
+    let finalBookmark = bookmark;
+
+    // Wenn Bootstrap abgeschlossen ist, nutze KI automatisch (wenn noch nicht klassifiziert)
+    if (
+      bootstrapComplete &&
+      (!bookmark.category || bookmark.category === "Uncategorized")
+    ) {
+      console.log(
+        "  🤖 Bootstrap abgeschlossen - nutze KI für Klassifikation..."
+      );
+
+      const ClassificationService = (
+        await import("./services/classification.js")
+      ).default;
+
+      const classification = await ClassificationService.classify({
+        title: bookmark.title || "Untitled",
+        description: bookmark.description || "",
+        url: bookmark.url,
+      });
+
+      finalBookmark = {
+        ...bookmark,
+        category: classification.category,
+        tags: classification.tags,
+        summary: classification.summary,
+        confidence: classification.confidence,
+        color: classification.color,
+        method: "ai-classification",
+      };
+
+      console.log(
+        `  ✅ KI-Klassifikation: ${classification.category} (${classification.confidence})`
+      );
+    }
+
     // Speichern
     console.log("  💾 Speichere in IndexedDB...");
-    const saved = await StorageManager.addBookmark(bookmark);
+    const saved = await StorageManager.addBookmark(finalBookmark);
     console.log("  ✅ Gespeichert mit ID:", saved.id);
     return saved;
   } catch (error) {

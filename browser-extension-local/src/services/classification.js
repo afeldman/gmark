@@ -3,7 +3,7 @@
  *
  * Nutzt Chrome Prompt API für lokale, private Klassifikation
  * Mit @types/dom-chromium-ai für Type-Safety
- * Kategorien: Development, Social, News, Shopping, Education, Entertainment, Documentation, Tools, Other
+ * Kategorien werden aus categories.yml geladen
  *
  * @typedef {import('../types/ai').LanguageModelResponse} LanguageModelResponse
  * @typedef {import('../types/ai').LanguageModelSession} LanguageModelSession
@@ -16,149 +16,102 @@ import {
   classifyWithAI,
   safeDestroySession,
 } from "../types/ai.js";
+import UsageManager from "../utils/usage.js";
 
-const CATEGORIES = {
-  Development: {
-    patterns: [
-      "github",
-      "stackoverflow",
-      "npm",
-      "docker",
-      "kubernetes",
-      "code",
-      "programming",
-      "javascript",
-      "python",
-      "react",
-      "api",
-      "library",
-      "framework",
-    ],
-    color: "#4f46e5",
-  },
-  Social: {
-    patterns: [
-      "twitter",
-      "facebook",
-      "instagram",
-      "linkedin",
-      "reddit",
-      "tiktok",
-      "social",
-      "community",
-      "follow",
-      "like",
-      "share",
-    ],
-    color: "#ec4899",
-  },
-  News: {
-    patterns: [
-      "news",
-      "article",
-      "blog",
-      "post",
-      "story",
-      "breaking",
-      "headline",
-      "magazine",
-      "journal",
-      "press",
-      "bbc",
-      "cnn",
-      "nyt",
-    ],
-    color: "#f59e0b",
-  },
-  Shopping: {
-    patterns: [
-      "amazon",
-      "ebay",
-      "shop",
-      "buy",
-      "cart",
-      "checkout",
-      "product",
-      "store",
-      "price",
-      "discount",
-      "sale",
-      "order",
-    ],
-    color: "#10b981",
-  },
-  Education: {
-    patterns: [
-      "coursera",
-      "udemy",
-      "khan academy",
-      "edx",
-      "learn",
-      "course",
-      "tutorial",
-      "university",
-      "school",
-      "education",
-      "training",
-      "certificate",
-    ],
-    color: "#06b6d4",
-  },
-  Entertainment: {
-    patterns: [
-      "netflix",
-      "youtube",
-      "spotify",
-      "twitch",
-      "game",
-      "movie",
-      "music",
-      "film",
-      "stream",
-      "watch",
-      "play",
-      "entertainment",
-    ],
-    color: "#a855f7",
-  },
-  Documentation: {
-    patterns: [
-      "docs",
-      "documentation",
-      "guide",
-      "manual",
-      "reference",
-      "wiki",
-      "readme",
-      "specification",
-      "spec",
-      "help",
-      "support",
-    ],
-    color: "#8b5cf6",
-  },
-  Tools: {
-    patterns: [
-      "tool",
-      "software",
-      "app",
-      "application",
-      "utility",
-      "converter",
-      "generator",
-      "editor",
-      "online",
-      "free",
-    ],
-    color: "#64748b",
-  },
-};
+import { loadYAML } from "../utils/yaml-parser.js";
+
+// Wird beim Start geladen
+let CATEGORIES = {};
 
 export class ClassificationService {
   constructor() {
     this.promptAPIAvailable = false;
-    this.initPromise = this.checkPromptAPI();
+    this.categoriesLoaded = false;
+    this.initPromise = this.initialize();
   }
+
+  async initialize() {
+    console.log("🔧 Initializing ClassificationService...");
+
+    // Lade Kategorien aus YAML
+    await this.loadCategories();
+
+    // Prüfe Prompt API
+    await this.checkPromptAPI();
+
+    console.log("✅ ClassificationService initialized");
+  }
+
+  /**
+   * Lade Kategorien aus YAML-Datei
+   */
+  async loadCategories() {
+    try {
+      console.log("📂 Loading categories from YAML...");
+      const categoriesUrl = chrome.runtime.getURL("src/config/categories.yml");
+      const data = await loadYAML(categoriesUrl);
+
+      if (data && data.categories) {
+        CATEGORIES = data.categories;
+        this.categoriesLoaded = true;
+        console.log("✅ Categories loaded:", Object.keys(CATEGORIES));
+      } else {
+        throw new Error("Invalid categories.yml structure");
+      }
+    } catch (error) {
+      console.error("❌ Failed to load categories:", error);
+      // Fallback zu Standard-Kategorien
+      CATEGORIES = this.getDefaultCategories();
+      this.categoriesLoaded = true;
+      console.warn("⚠️ Using default categories as fallback");
+    }
+  }
+
+  /**
+   * Fallback Standard-Kategorien
+   */
+  getDefaultCategories() {
+    return {
+      Development: {
+        patterns: ["github", "stackoverflow", "npm", "code", "programming"],
+        color: "#4f46e5",
+      },
+      Social: {
+        patterns: ["twitter", "facebook", "instagram", "linkedin", "reddit"],
+        color: "#ec4899",
+      },
+      News: {
+        patterns: ["news", "article", "blog", "post"],
+        color: "#f59e0b",
+      },
+      Shopping: {
+        patterns: ["amazon", "shop", "buy", "cart"],
+        color: "#10b981",
+      },
+      Education: {
+        patterns: ["coursera", "udemy", "learn", "course", "tutorial"],
+        color: "#8b5cf6",
+      },
+      Entertainment: {
+        patterns: ["netflix", "youtube", "spotify", "game", "movie"],
+        color: "#f43f5e",
+      },
+      Documentation: {
+        patterns: ["docs", "documentation", "guide", "manual"],
+        color: "#06b6d4",
+      },
+      Tools: {
+        patterns: ["tool", "utility", "converter", "editor"],
+        color: "#64748b",
+      },
+      Other: {
+        patterns: ["online", "free"],
+        color: "#6b7280",
+      },
+    };
+  }
+
+  async checkPromptAPI() {}
 
   async checkPromptAPI() {
     try {
@@ -186,33 +139,60 @@ export class ClassificationService {
    * 3. Fallback zu "Other"
    */
   async classify(bookmark, usePromptAPI = true) {
+    // Warte bis Kategorien geladen sind
+    await this.initPromise;
+
     try {
+      console.log("🏷️ Starting classification for:", bookmark.title);
+      console.log("  URL:", bookmark.url);
+      console.log("  Use Prompt API:", usePromptAPI);
+      console.log("  Prompt API available:", this.promptAPIAvailable);
+
       // Methode 1: Pattern-Matching (schnell)
+      console.log("  🔍 Trying pattern-based classification...");
       const patternResult = this.classifyByPatterns(
         bookmark.title,
         bookmark.description,
         bookmark.url
       );
+      console.log(
+        "  ✅ Pattern result:",
+        patternResult.category,
+        `(confidence: ${patternResult.confidence})`
+      );
 
       // Wenn confidence hoch genug, use it
       if (patternResult.confidence >= 0.8) {
+        console.log("  🎯 High confidence, using pattern result");
         return patternResult;
       }
 
       // Methode 2: Prompt API (wenn verfügbar und gewünscht)
       if (usePromptAPI && this.promptAPIAvailable) {
         try {
+          console.log("  🤖 Trying AI classification with Prompt API...");
           const aiResult = await this.classifyWithPromptAPI(bookmark);
+          console.log(
+            "  ✅ AI result:",
+            aiResult.category,
+            `(confidence: ${aiResult.confidence})`
+          );
           return aiResult;
         } catch (error) {
-          console.warn("Prompt API classification failed, using pattern match");
+          console.warn(
+            "⚠️ Prompt API classification failed, using pattern match",
+            error
+          );
         }
+      } else if (!this.promptAPIAvailable) {
+        console.log("  ⚠️ Prompt API not available, using pattern result");
       }
 
       // Fallback: Verwende Pattern-Result (auch wenn confidence < 0.8)
+      console.log("  🔙 Fallback to pattern result");
       return patternResult;
     } catch (error) {
-      console.error("Classification error:", error);
+      console.error("❌ Classification error:", error);
       return {
         category: "Other",
         confidence: 0,
@@ -227,6 +207,7 @@ export class ClassificationService {
    * Pattern-basierte Klassifikation (schnell, offline)
    */
   classifyByPatterns(title, description, url) {
+    console.log("🔍 Pattern-based classification...");
     const combined = `${title} ${description} ${url}`.toLowerCase();
     const scores = {};
 
@@ -247,6 +228,9 @@ export class ClassificationService {
     )[0];
     const category = bestCategory?.[0] || "Other";
     const confidence = Math.min((bestCategory?.[1] || 0) / 10, 1);
+
+    console.log("  Scores:", scores);
+    console.log("  Best:", category, `(${confidence})`);
 
     // Generiere Tags
     const tags = this.generateTags(combined, category);
@@ -269,6 +253,8 @@ export class ClassificationService {
   async classifyWithPromptAPI(bookmark) {
     let session = null;
     try {
+      console.log("🤖 Starting Prompt API classification...");
+
       // Type-safe Session Creation
       session = await createLanguageModelSession({
         signal: AbortSignal.timeout(60000),
@@ -277,6 +263,8 @@ export class ClassificationService {
       if (!session) {
         throw new Error("Failed to create Prompt API session");
       }
+
+      console.log("  ✅ Session created");
 
       const prompt = `
 Du bist ein Bookmark-Klassifizierer. Klassifiziere das folgende Bookmark in EINER der folgenden Kategorien:
@@ -306,12 +294,30 @@ Antwort im JSON-Format:
 Antwort (nur JSON, keine anderen Worte):
 `;
 
+      // Token-Quota prüfen (nur prompt geschätzt, Antwort wird nachgetragen)
+      const requiredTokens = UsageManager.estimateTokensFromText(prompt);
+      const canUse = await UsageManager.canConsume(requiredTokens);
+      if (!canUse) {
+        console.warn(
+          "⛔ Tageslimit erreicht – KI wird nicht verwendet, Fallback zu Patterns"
+        );
+        return null; // lässt classify() auf Pattern zurückfallen
+      }
+
+      console.log("  📤 Sending prompt to AI...");
       // Type-safe Classification
       const result = await classifyWithAI(session, prompt);
+      // Antwort-Tokens schätzen und verbuchen (prompt + response grob)
+      const responseTokens = UsageManager.estimateTokensFromText(
+        JSON.stringify(result)
+      );
+      await UsageManager.consume(requiredTokens + responseTokens);
 
       if (!result) {
         throw new Error("Classification failed");
       }
+
+      console.log("  ✅ AI classification result:", result.category);
 
       return {
         category: result.category || "Other",
