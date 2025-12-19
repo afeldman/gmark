@@ -8,7 +8,7 @@ Deno.test("User Service - Register", async () => {
   const user = await UserService.registerUser(
     "testuser",
     "test@example.com",
-    "password123",
+    "password123"
   );
 
   assertEquals(user.username, "testuser");
@@ -19,7 +19,7 @@ Deno.test("User Service - Login Success", async () => {
   const user = await UserService.registerUser(
     "loginuser",
     "login@example.com",
-    "securepass",
+    "securepass"
   );
 
   const result = await UserService.loginUser("loginuser", "securepass");
@@ -32,7 +32,7 @@ Deno.test("User Service - Login Failure", async () => {
   const user = await UserService.registerUser(
     "failuser",
     "fail@example.com",
-    "password123",
+    "password123"
   );
 
   const result = await UserService.loginUser("failuser", "wrongpassword");
@@ -43,7 +43,7 @@ Deno.test("User Service - Get User", async () => {
   const user = await UserService.registerUser(
     "getuser",
     "get@example.com",
-    "password",
+    "password"
   );
 
   const retrieved = await UserService.getUser(user.id);
@@ -54,7 +54,7 @@ Deno.test("User Service - Validate Token", async () => {
   const user = await UserService.registerUser(
     "tokenuser",
     "token@example.com",
-    "password",
+    "password"
   );
 
   const result = await UserService.loginUser("tokenuser", "password");
@@ -70,7 +70,7 @@ Deno.test("User Service - Duplicate Username", async () => {
   const result = await UserService.registerUser(
     "duplicate",
     "dup2@example.com",
-    "password",
+    "password"
   );
 
   assertEquals(result, null);
