@@ -31,6 +31,10 @@ function extractPageContent() {
   };
 }
 
+/**
+ * Extrahiere den Hauptinhalt einer Webseite
+ * @returns {string} Der extrahierte Text-Inhalt der Seite
+ */
 function extractMainContent() {
   // Versuche, den Hauptinhalt zu extrahieren
 
@@ -50,6 +54,10 @@ function extractMainContent() {
   return document.body.innerText;
 }
 
+/**
+ * Lese die Meta-Description der Seite
+ * @returns {string} Die Meta-Description oder ein leerer String
+ */
 function getMetaDescription() {
   return (
     document.querySelector('meta[name="description"]')?.content ||
@@ -58,22 +66,38 @@ function getMetaDescription() {
   );
 }
 
+/**
+ * Lese die Open Graph Description der Seite
+ * @returns {string} Die OG-Description oder ein leerer String
+ */
 function getOGDescription() {
   return (
     document.querySelector('meta[property="og:description"]')?.content || ""
   );
 }
 
+/**
+ * Lese den ersten Absatz der Seite
+ * @returns {string} Der Text des ersten Absatzes oder ein leerer String
+ */
 function getFirstParagraph() {
   const p = document.querySelector("p");
   return p?.innerText || "";
 }
 
+/**
+ * Lese die Meta-Keywords der Seite
+ * @returns {Array<string>} Array der Keywords oder ein leeres Array
+ */
 function getMetaKeywords() {
   const keywords = document.querySelector('meta[name="keywords"]')?.content;
   return keywords ? keywords.split(",").map((k) => k.trim()) : [];
 }
 
+/**
+ * Extrahiere alle Überschriften von der Seite
+ * @returns {Array<Object>} Array mit level und text Eigenschaften
+ */
 function getHeadings() {
   const headings = [];
   document.querySelectorAll("h1, h2, h3").forEach((h) => {
@@ -85,6 +109,10 @@ function getHeadings() {
   return headings;
 }
 
+/**
+ * Extrahiere Bilder von der Seite
+ * @returns {Array<Object>} Array mit bis zu 5 Bildern (src, alt, title)
+ */
 function getImages() {
   const images = [];
   document.querySelectorAll("img").forEach((img) => {

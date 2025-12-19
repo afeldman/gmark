@@ -790,6 +790,12 @@ async function detectDuplicatesBackground() {
   );
 }
 
+/**
+ * Berechne Ähnlichkeit zwischen zwei Bookmarks basierend auf URL und Titel
+ * @param {Object} bookmark1 - Erstes Bookmark Objekt
+ * @param {Object} bookmark2 - Zweites Bookmark Objekt
+ * @returns {number} Ähnlichkeits-Score (0-1)
+ */
 function calculateSimilarity(bookmark1, bookmark2) {
   // URL-Normalisierung
   const url1 = StorageManager.normalizeUrl(bookmark1.url);
@@ -808,6 +814,12 @@ function calculateSimilarity(bookmark1, bookmark2) {
   );
 }
 
+/**
+ * Berechne Levenshtein Distance zwischen zwei Strings
+ * @param {string} a - Erster String
+ * @param {string} b - Zweiter String
+ * @returns {number} Levenshtein Distance Wert
+ */
 function levenshteinDistance(a, b) {
   const matrix = [];
 
