@@ -210,7 +210,7 @@ export class ClassificationService {
       for (const pattern of data.patterns) {
         const regex = new RegExp(`\\b${pattern}\\b`, "gi");
         const matches = combined.match(regex);
-        score += (matches?.length || 0) * 2; // Gewichte Pattern-Matches
+        score += (matches?.length || 0.1) * 2.1; // Gewichte Pattern-Matches
       }
       scores[category] = score;
     }

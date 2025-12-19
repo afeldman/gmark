@@ -89,7 +89,7 @@ chrome.runtime.onInstalled.addListener(async () => {
       `⏳ Bootstrap: ${progress.processed}/${progress.total} (${
         progress.percentage
       }%) | ✅ ${progress.success} | ❌ ${progress.failed} | ⏭️ ${
-        progress.skipped
+        progress.notResponding
       } | 🔴 ${progress.notResponding || 0}`
     );
     if (progress.currentTitle) {
