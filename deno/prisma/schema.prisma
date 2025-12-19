@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "wasm"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  username  String    @unique
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  bookmarks    Bookmark[]
+  folders      BookmarkFolder[]
+  sessions     ActiveSession[]
+  teamUsers    TeamUser[]
+
+  @@map("users")
+}
+
+model Bookmark {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  title     String
+  url       String
+  description String?
+  tags      String?   // JSON array stored as string
+  category  String?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  folderId  Int?
+
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder BookmarkFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  keywords BookmarkKeyword[]
+
+  @@index([userId])
+  @@index([folderId])
+  @@map("bookmarks")
+}
+
+model BookmarkFolder {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  name      String
+  parentId  Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   BookmarkFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children BookmarkFolder[] @relation("FolderHierarchy")
+  bookmarks Bookmark[]
+
+  @@index([userId])
+  @@index([parentId])
+  @@map("bookmark_folders")
+}
+
+model Keyword {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+
+  bookmarks BookmarkKeyword[]
+
+  @@map("keywords")
+}
+
+model BookmarkKeyword {
+  bookmarkId Int
+  keywordId  Int
+  createdAt  DateTime  @default(now())
+
+  bookmark Bookmark @relation(fields: [bookmarkId], references: [id], onDelete: Cascade)
+  keyword  Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@id([bookmarkId, keywordId])
+  @@map("bookmark_keywords")
+}
+
+model Team {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  users TeamUser[]
+
+  @@map("teams")
+}
+
+model TeamUser {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  teamId    Int
+  role      String    @default("member")
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([userId])
+  @@index([teamId])
+  @@map("team_users")
+}
+
+model ActiveSession {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  token     String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("active_sessions")
+}
