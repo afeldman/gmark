@@ -2,8 +2,20 @@
  * Classification Service
  * 
  * Nutzt Chrome Prompt API für lokale, private Klassifikation
+ * Mit @types/dom-chromium-ai für Type-Safety
  * Kategorien: Development, Social, News, Shopping, Education, Entertainment, Documentation, Tools, Other
+ * 
+ * @typedef {import('../types/ai').LanguageModelResponse} LanguageModelResponse
+ * @typedef {import('../types/ai').LanguageModelSession} LanguageModelSession
  */
+
+import {
+  isPromptAPIAvailable,
+  checkCanCreateSession,
+  createLanguageModelSession,
+  classifyWithAI,
+  safeDestroySession,
+} from "../types/ai.d.ts";
 
 const CATEGORIES = {
   Development: {
@@ -150,21 +162,19 @@ export class ClassificationService {
 
   async checkPromptAPI() {
     try {
-      const available = await (async () => {
-        const session = await (window.ai?.languageModel as any)?.create?.({
-          signal: AbortSignal.timeout(1000),
-        });
-        if (session) {
-          session.destroy?.();
-          return true;
+      // Nutze Type-sichere Funktion
+      this.promptAPIAvailable = await checkCanCreateSession((status) => {
+        console.log(`ℹ️ Prompt API Status: ${status}`);
+        if (status === "readily") {
+          console.log("✅ Prompt API ready to use");
+        } else if (status === "after-download") {
+          console.log("⏳ Model downloading, will be available shortly");
+        } else {
+          console.log("❌ Prompt API not available on this device");
         }
-        return false;
-      })();
-
-      this.promptAPIAvailable = available;
-      console.log("Prompt API available:", available);
+      });
     } catch (error) {
-      console.log("Prompt API not available:", error);
+      console.warn("⚠️ Prompt API check failed:", error);
       this.promptAPIAvailable = false;
     }
   }
@@ -253,17 +263,21 @@ export class ClassificationService {
 
   /**
    * Klassifikation mit Chrome Prompt API
+   * @param {Object} bookmark - Bookmark-Objekt
+   * @returns {Promise<Object>} Classification result
    */
   async classifyWithPromptAPI(bookmark) {
-    const session = await (window.ai as any)?.languageModel?.create?.({
-      signal: AbortSignal.timeout(60000),
-    });
-
-    if (!session) {
-      throw new Error("Prompt API session not available");
-    }
-
+    let session = null;
     try {
+      // Type-safe Session Creation
+      session = await createLanguageModelSession({
+        signal: AbortSignal.timeout(60000),
+      });
+
+      if (!session) {
+        throw new Error("Failed to create Prompt API session");
+      }
+
       const prompt = `
 Du bist ein Bookmark-Klassifizierer. Klassifiziere das folgende Bookmark in EINER der folgenden Kategorien:
 - Development (Programmierung, Code, APIs)
@@ -292,24 +306,29 @@ Antwort im JSON-Format:
 Antwort (nur JSON, keine anderen Worte):
 `;
 
-      const response = await session.prompt(prompt);
-      const parsed = JSON.parse(response);
+      // Type-safe Classification
+      const result = await classifyWithAI(session, prompt);
+      
+      if (!result) {
+        throw new Error("Classification failed");
+      }
 
       return {
-        category: parsed.category || "Other",
-        confidence: parsed.confidence || 0.5,
-        tags: parsed.tags || [],
-        summary: parsed.summary || "",
+        category: result.category || "Other",
+        confidence: result.confidence || 0.5,
+        tags: result.tags || [],
+        summary: result.summary || "",
         method: "prompt-api",
         color:
-          CATEGORIES[parsed.category as keyof typeof CATEGORIES]?.color ||
+          CATEGORIES[result.category as keyof typeof CATEGORIES]?.color ||
           "#6b7280",
       };
     } catch (error) {
-      console.error("Prompt API error:", error);
+      console.error("❌ Prompt API classification error:", error);
       throw error;
     } finally {
-      session?.destroy?.();
+      // Type-safe Cleanup
+      safeDestroySession(session);
     }
   }
 

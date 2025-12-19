@@ -1,0 +1,28 @@
+{
+  "name": "gmark-local",
+  "version": "1.0.0-beta",
+  "description": "Privacy-First Bookmark Manager - 100% Offline, Local, Private",
+  "type": "module",
+  "scripts": {
+    "dev": "web-ext run -s . --target chromium",
+    "build": "web-ext build -s . --overwrite-dest",
+    "lint": "eslint src/",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/dom-chromium-ai": "^1.0.0",
+    "typescript": "^5.3.3",
+    "web-ext": "^7.9.0"
+  },
+  "keywords": [
+    "chrome-extension",
+    "bookmarks",
+    "ai",
+    "classification",
+    "privacy",
+    "offline"
+  ],
+  "author": "",
+  "license": "MIT"
+}
