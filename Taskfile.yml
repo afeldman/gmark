@@ -1,0 +1,422 @@
+version: "3"
+
+tasks:
+  # ============================================
+  # 🎯 BACKEND (DENO)
+  # ============================================
+  backend:dev:
+    desc: "Start backend in development mode with auto-reload"
+    dir: deno
+    cmds:
+      - deno task dev
+    interactive: true
+
+  backend:start:
+    desc: "Start backend server (production)"
+    dir: deno
+    cmds:
+      - deno task start
+    interactive: true
+
+  backend:test:
+    desc: "Run all backend tests"
+    dir: deno
+    cmds:
+      - deno task test
+
+  backend:test:watch:
+    desc: "Run backend tests in watch mode"
+    dir: deno
+    cmds:
+      - deno task test:watch
+    interactive: true
+
+  backend:lint:
+    desc: "Lint backend code"
+    dir: deno
+    cmds:
+      - deno task lint
+
+  backend:format:
+    desc: "Auto-format backend code"
+    dir: deno
+    cmds:
+      - deno task format
+
+  backend:format:check:
+    desc: "Check backend code formatting"
+    dir: deno
+    cmds:
+      - deno task format:check
+
+  backend:check:
+    desc: "Type check backend code"
+    dir: deno
+    cmds:
+      - deno task check
+
+  backend:validate:
+    desc: "Run all backend checks (lint + format + test)"
+    dir: deno
+    cmds:
+      - task: backend:lint
+      - task: backend:format:check
+      - task: backend:test
+
+  # ============================================
+  # 🧩 EXTENSION
+  # ============================================
+  extension:install:
+    desc: "Install extension dependencies (npm)"
+    dir: browser-extension
+    cmds:
+      - npm install
+
+  extension:test:
+    desc: "Run extension tests (Jest)"
+    dir: browser-extension
+    cmds:
+      - npm test
+
+  extension:test:watch:
+    desc: "Run extension tests in watch mode"
+    dir: browser-extension
+    cmds:
+      - npm test -- --watch
+    interactive: true
+
+  extension:test:coverage:
+    desc: "Run extension tests with coverage"
+    dir: browser-extension
+    cmds:
+      - npm run test:coverage
+
+  extension:lint:
+    desc: "Lint extension code (ESLint)"
+    dir: browser-extension
+    cmds:
+      - npm run lint
+
+  extension:lint:fix:
+    desc: "Fix extension linting issues"
+    dir: browser-extension
+    cmds:
+      - npm run lint -- --fix
+
+  extension:format:
+    desc: "Format extension code (Prettier)"
+    dir: browser-extension
+    cmds:
+      - npm run format
+
+  extension:format:check:
+    desc: "Check extension code formatting"
+    dir: browser-extension
+    cmds:
+      - npm run format:check
+
+  extension:validate:
+    desc: "Run all extension checks (lint + format + test)"
+    dir: browser-extension
+    cmds:
+      - task: extension:install
+      - task: extension:lint
+      - task: extension:format:check
+      - task: extension:test
+
+  # ============================================
+  # 🧪 TESTING
+  # ============================================
+  test:all:
+    desc: "Run all tests (backend + extension)"
+    cmds:
+      - task: backend:test
+      - task: extension:test
+
+  test:backend:unit:
+    desc: "Run specific backend unit tests"
+    dir: deno
+    cmds:
+      - deno test --allow-net --allow-read --allow-write --allow-env src/services/user.test.ts
+      - deno test --allow-net --allow-read --allow-write --allow-env src/services/html.test.ts
+      - deno test --allow-net --allow-read --allow-write --allow-env src/services/ai.test.ts
+
+  test:backend:user:
+    desc: "Test user service only"
+    dir: deno
+    cmds:
+      - deno test --allow-net --allow-read --allow-write --allow-env src/services/user.test.ts
+
+  test:backend:html:
+    desc: "Test HTML service only"
+    dir: deno
+    cmds:
+      - deno test --allow-net --allow-read --allow-write --allow-env src/services/html.test.ts
+
+  test:backend:ai:
+    desc: "Test AI service only"
+    dir: deno
+    cmds:
+      - deno test --allow-net --allow-read --allow-write --allow-env src/services/ai.test.ts
+
+  test:extension:popup:
+    desc: "Test extension popup"
+    dir: browser-extension
+    cmds:
+      - npm test -- __tests__/popup.test.js
+
+  # ============================================
+  # 🔍 CODE QUALITY
+  # ============================================
+  quality:check:
+    desc: "Run all quality checks (lint + format)"
+    cmds:
+      - task: backend:lint
+      - task: backend:format:check
+      - task: extension:lint
+      - task: extension:format:check
+
+  quality:fix:
+    desc: "Auto-fix all code quality issues"
+    cmds:
+      - task: backend:format
+      - task: extension:lint:fix
+      - task: extension:format
+
+  # ============================================
+  # 🚀 DEVELOPMENT
+  # ============================================
+  dev:backend:
+    desc: "Start backend development server"
+    cmds:
+      - task: backend:dev
+
+  dev:extension:test:
+    desc: "Start extension tests in watch mode"
+    cmds:
+      - task: extension:test:watch
+
+  dev:all:
+    desc: "Setup complete development environment"
+    cmds:
+      - echo "📦 Installing extension dependencies..."
+      - task: extension:install
+      - echo "✅ Development environment ready!"
+      - echo ""
+      - echo "🚀 Available commands:"
+      - echo "  task dev:backend        - Start Deno backend"
+      - echo "  task dev:extension:test - Watch extension tests"
+      - echo "  task test:all          - Run all tests"
+      - echo "  task quality:check     - Check code quality"
+
+  # ============================================
+  # 📦 BUILD & DEPLOYMENT
+  # ============================================
+  build:backend:
+    desc: "Build/check backend for production"
+    dir: deno
+    cmds:
+      - deno task check
+      - deno task lint
+      - deno task format:check
+
+  build:extension:
+    desc: "Build extension for production"
+    dir: browser-extension
+    cmds:
+      - npm run lint
+      - npm run format:check
+      - npm test -- --passWithNoTests
+
+  build:docker:
+    desc: "Build Docker image for backend"
+    cmds:
+      - echo "Building Docker image for gmark backend..."
+      - docker build -t gmark:latest ./deno
+      - echo "✅ Docker image built successfully!"
+
+  deploy:validate:
+    desc: "Validate deployment readiness"
+    cmds:
+      - task: build:backend
+      - task: build:extension
+      - echo "✅ All checks passed! Ready for deployment."
+
+  # ============================================
+  # 🔧 UTILITIES
+  # ============================================
+  status:
+    desc: "Show project status and recent commits"
+    cmds:
+      - echo "📊 GMARK Project Status"
+      - echo "======================="
+      - echo ""
+      - echo "📁 Project Structure:"
+      - ls -la | grep -E "^d" | awk '{print "  " $NF}'
+      - echo ""
+      - echo "📝 Recent Commits:"
+      - git log --oneline -5
+      - echo ""
+      - echo "📊 Test Files:"
+      - find . -name "*.test.ts" -o -name "*.test.js" | sort
+
+  info:
+    desc: "Show useful information and commands"
+    cmds:
+      - echo "🔖 GMARK - AI Bookmark Manager"
+      - echo "==============================="
+      - echo ""
+      - echo "📚 Documentation:"
+      - echo "  • README_COMPLETE.md    - Full project overview"
+      - echo "  • docs/TESTING.md       - Testing guide"
+      - echo "  • docs/PROMPT_API.md    - Chrome Prompt API setup"
+      - echo "  • docs/INDEX.md         - Documentation overview"
+      - echo ""
+      - echo "🚀 Quick Start:"
+      - echo "  task backend:dev        - Start backend"
+      - echo "  task dev:all            - Setup dev environment"
+      - echo "  task test:all           - Run all tests"
+      - echo ""
+      - echo "📦 Backend:"
+      - echo "  task backend:dev        - Start development server"
+      - echo "  task backend:test       - Run tests"
+      - echo "  task backend:lint       - Check code quality"
+      - echo ""
+      - echo "🧩 Extension:"
+      - echo "  task extension:install  - Install dependencies"
+      - echo "  task extension:test     - Run tests"
+      - echo "  task extension:lint     - Check code quality"
+      - echo ""
+      - echo "🧪 Testing:"
+      - echo "  task test:all           - All tests"
+      - echo "  task backend:test:watch - Backend tests (watch)"
+      - echo "  task extension:test:watch - Extension tests (watch)"
+      - echo ""
+      - echo "🔍 Quality:"
+      - echo "  task quality:check      - Check all"
+      - echo "  task quality:fix        - Auto-fix all"
+      - echo ""
+      - echo "ℹ️  More commands: task -l"
+
+  clean:
+    desc: "Clean build artifacts and cache"
+    cmds:
+      - echo "🧹 Cleaning build artifacts..."
+      - rm -rf deno/coverage/
+      - rm -rf browser-extension/coverage/
+      - rm -rf browser-extension/node_modules/
+      - rm -rf browser-extension/dist/
+      - echo "✅ Cleanup complete!"
+
+  help:
+    desc: "Show all available tasks"
+    cmds:
+      - task -l
+
+  # ============================================
+  # 🎯 WORKFLOW PRESETS
+  # ============================================
+  workflow:setup:
+    desc: "Complete project setup"
+    cmds:
+      - task: extension:install
+      - task: backend:validate
+      - task: extension:validate
+      - echo ""
+      - echo "✅ Project setup complete!"
+
+  workflow:quick-test:
+    desc: "Quick test run (fast checks)"
+    cmds:
+      - task: backend:test
+      - task: extension:test
+
+  workflow:full-validation:
+    desc: "Full validation before deployment"
+    cmds:
+      - task: backend:validate
+      - task: extension:validate
+      - task: test:all
+      - echo ""
+      - echo "✅ Full validation passed!"
+
+  workflow:ci:
+    desc: "CI pipeline (like GitHub Actions)"
+    cmds:
+      - task: backend:lint
+      - task: backend:format:check
+      - task: backend:test
+      - task: extension:lint
+      - task: extension:format:check
+      - task: extension:test
+      - echo ""
+      - echo "✅ CI pipeline passed!"
+
+  # ============================================
+  # 📡 SERVER MANAGEMENT
+  # ============================================
+  server:start:
+    desc: "Start production server"
+    dir: deno
+    cmds:
+      - deno task start
+    interactive: true
+
+  server:logs:
+    desc: "Show server logs"
+    cmds:
+      - tail -f deno/server.log 2>/dev/null || echo "No logs found. Start server first with: task server:start"
+
+  # ============================================
+  # 📝 GIT HELPERS
+  # ============================================
+  git:status:
+    desc: "Show git status"
+    cmds:
+      - git status
+
+  git:log:
+    desc: "Show recent commits"
+    cmds:
+      - git log --oneline -10
+
+  git:commit:lint:
+    desc: "Create commit after running all validations"
+    cmds:
+      - task: workflow:full-validation
+      - git add -A
+      - echo "Ready to commit with: git commit -m \"Your message\""
+
+  # ============================================
+  # 🐳 DOCKER (Optional)
+  # ============================================
+  docker:build:
+    desc: "Build Docker image"
+    cmds:
+      - docker build -t gmark:latest -f Dockerfile.backend ./deno
+
+  docker:run:
+    desc: "Run Docker container"
+    cmds:
+      - docker run -p 8000:8000 --env-file deno/.env gmark:latest
+
+  docker:stop:
+    desc: "Stop running Docker containers"
+    cmds:
+      - docker stop $(docker ps -q --filter "ancestor=gmark:latest") || echo "No containers running"
+
+vars:
+  PROJECT_NAME: GMARK
+  VERSION: "1.0.0"
+
+# Task configuration
+env:
+  NODE_ENV: development
+  DENO_ENV: development
+
+dotenv:
+  - .env
+  - deno/.env
+
+# Color output
+output: prefixed

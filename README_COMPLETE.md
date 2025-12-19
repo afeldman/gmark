@@ -381,10 +381,15 @@ Siehe: `.github/workflows/test.yml`
 
 ## 📖 Dokumentation
 
-- [TESTING.md](./TESTING.md) - Testing Guide & Best Practices
-- [PROMPT_API.md](./browser-extension/PROMPT_API.md) - Prompt API Setup
-- [README_DENO.md](./README_DENO.md) - Deno Backend Details
-- [IMPLEMENTATION.md](./IMPLEMENTATION.md) - Original Implementation Notes
+Alle Dokumentationen sind im [docs/](./docs/)-Verzeichnis organisiert:
+
+- [docs/INDEX.md](./docs/INDEX.md) - Dokumentations-Übersicht
+- [docs/TESTING.md](./docs/TESTING.md) - Testing Guide & Best Practices
+- [docs/PROMPT_API.md](./docs/PROMPT_API.md) - Prompt API Setup
+- [docs/README_DENO.md](./docs/README_DENO.md) - Deno Backend Details
+- [docs/IMPLEMENTATION.md](./docs/IMPLEMENTATION.md) - Implementierungsdetails
+- [docs/EXTENSION_SUMMARY.md](./docs/EXTENSION_SUMMARY.md) - Extension-Zusammenfassung
+- [docs/TASKFILE.md](./docs/TASKFILE.md) - Taskfile Quick Reference
 
 ## 🛣️ Roadmap
 
