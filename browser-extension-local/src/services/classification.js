@@ -111,8 +111,6 @@ export class ClassificationService {
     };
   }
 
-  async checkPromptAPI() {}
-
   async checkPromptAPI() {
     try {
       // Nutze Type-sichere Funktion
@@ -167,16 +165,6 @@ export class ClassificationService {
         return patternResult;
       }
 
-      // Methode 2: Prompt API (wenn verfügbar und gewünscht)
-      if (usePromptAPI && this.promptAPIAvailable) {
-        try {
-          console.log("  🤖 Trying AI classification with Prompt API...");
-          const aiResult = await this.classifyWithPromptAPI(bookmark);
-          console.log(
-            "  ✅ AI result:",
-            aiResult.category,
-            `(confidence: ${aiResult.confidence})`
-          );
       // Methode 2: Prompt API über Tab-Context (wenn verfügbar und gewünscht)
       if (usePromptAPI && this.promptAPIAvailable) {
         try {

@@ -37,17 +37,20 @@ export async function checkCanCreateSession(statusCallback) {
     if (!hasLM || typeof ai.languageModel.canCreateTextSession !== "function") {
       console.log("  ⚠️ AI nicht im Service Worker verfügbar");
       console.log("  🔄 Prüfe Tab-Context als Fallback...");
-      
+
       try {
-        const { checkPromptAPIInTab } = await import('../utils/ai-proxy.js');
+        const { checkPromptAPIInTab } = await import("../utils/ai-proxy.js");
         const tabResult = await checkPromptAPIInTab();
-        
+
         if (tabResult.available) {
           console.log("  ✅ AI verfügbar in Tab-Context!");
           if (statusCallback) statusCallback("readily");
           return true;
         } else {
-          console.log("  ❌ AI auch in Tab-Context nicht verfügbar:", tabResult.error);
+          console.log(
+            "  ❌ AI auch in Tab-Context nicht verfügbar:",
+            tabResult.error
+          );
           if (statusCallback) statusCallback("no");
           return false;
         }
