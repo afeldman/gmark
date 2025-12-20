@@ -39,12 +39,14 @@ GMarks ist eine intelligente Browser-Extension, die deine Bookmarks automatisch 
 ### Browser Extension
 
 1. **Repository klonen**
+
    ```bash
    git clone https://github.com/afeldman/gmark.git
    cd gmark/browser-extension-local
    ```
 
 2. **Extension laden**
+
    - Öffne Chrome: `chrome://extensions/`
    - Aktiviere "Entwicklermodus" (oben rechts)
    - Klicke "Entpackte Erweiterung laden"
@@ -60,17 +62,17 @@ GMarks ist eine intelligente Browser-Extension, die deine Bookmarks automatisch 
 
 GMarks klassifiziert Bookmarks in 9 intelligente Kategorien:
 
-| Kategorie | Icon | Beschreibung | Farbe |
-|-----------|------|--------------|-------|
-| **Development** | 💻 | Code, APIs, GitHub, StackOverflow | `#4f46e5` |
-| **Social** | 👥 | Social Media, Communities | `#ec4899` |
-| **News** | 📰 | Nachrichten, Blogs, Artikel | `#f59e0b` |
-| **Shopping** | 🛍️ | E-Commerce, Produkte | `#10b981` |
-| **Education** | 📚 | Kurse, Tutorials, Lernen | `#8b5cf6` |
-| **Entertainment** | 🎬 | Filme, Musik, Games, Streaming | `#f43f5e` |
-| **Documentation** | 📖 | Docs, Guides, Referenzen | `#06b6d4` |
-| **Tools** | 🔧 | Online-Tools, Utilities | `#64748b` |
-| **Other** | 📌 | Sonstiges | `#6b7280` |
+| Kategorie         | Icon | Beschreibung                      | Farbe     |
+| ----------------- | ---- | --------------------------------- | --------- |
+| **Development**   | 💻   | Code, APIs, GitHub, StackOverflow | `#4f46e5` |
+| **Social**        | 👥   | Social Media, Communities         | `#ec4899` |
+| **News**          | 📰   | Nachrichten, Blogs, Artikel       | `#f59e0b` |
+| **Shopping**      | 🛍️   | E-Commerce, Produkte              | `#10b981` |
+| **Education**     | 📚   | Kurse, Tutorials, Lernen          | `#8b5cf6` |
+| **Entertainment** | 🎬   | Filme, Musik, Games, Streaming    | `#f43f5e` |
+| **Documentation** | 📖   | Docs, Guides, Referenzen          | `#06b6d4` |
+| **Tools**         | 🔧   | Online-Tools, Utilities           | `#64748b` |
+| **Other**         | 📌   | Sonstiges                         | `#6b7280` |
 
 ## 🛠️ Architektur
 
@@ -120,7 +122,7 @@ browser-extension-local/
 ### Dashboard
 
 - **Statistiken**: Gesamte Bookmarks, Kategorien, Duplikate
-- **Charts**: 
+- **Charts**:
   - 7-Tage Aktivität (Line Chart)
   - Kategorieverteilung (Doughnut Chart)
 - **Activity Stream**: Letzte 5 gespeicherte Bookmarks
@@ -146,26 +148,28 @@ browser-extension-local/
 
 ### Cloud Providers
 
-| Provider | Modell | API Key erforderlich |
-|----------|--------|---------------------|
-| OpenAI | GPT-4o-mini | ✅ |
-| DeepSeek | deepseek-chat | ✅ |
-| Google Gemini | gemini-1.5-flash | ✅ |
-| Mistral AI | mistral-small | ✅ |
-| Together AI (Llama) | Meta-Llama | ✅ |
-| Ollama | local | ❌ |
-| LM Studio | local | ❌ |
+| Provider            | Modell           | API Key erforderlich |
+| ------------------- | ---------------- | -------------------- |
+| OpenAI              | GPT-4o-mini      | ✅                   |
+| DeepSeek            | deepseek-chat    | ✅                   |
+| Google Gemini       | gemini-1.5-flash | ✅                   |
+| Mistral AI          | mistral-small    | ✅                   |
+| Together AI (Llama) | Meta-Llama       | ✅                   |
+| Ollama              | local            | ❌                   |
+| LM Studio           | local            | ❌                   |
 
 ## 📊 Features im Detail
 
 ### Klassifikation
 
 **Hybrid-Ansatz:**
+
 1. **Pattern Matching** - Schnelle Offline-Klassifikation via URL/Titel-Patterns
 2. **AI Klassifikation** - Tiefe Content-Analyse mit HTML Body (2000 Zeichen)
 3. **Confidence Scoring** - 5 Dezimalstellen Genauigkeit (0.3 - 0.9)
 
 **HTML Content Integration:**
+
 ```javascript
 // Extrahiert erste 2000 Zeichen des HTML Body
 const bodyContent = bookmark.content?.substring(0, 2000);
@@ -203,6 +207,7 @@ Modern Dark Theme (#0f172a)
 ### Charts
 
 **SimpleChart Library** (Manifest V3 kompatibel):
+
 - Line Charts mit Gradient Fill
 - Doughnut Charts mit Legend
 - Canvas-basiert (kein externes CDN)
@@ -260,7 +265,7 @@ chrome://extensions → GMarks → Background Service Worker
 
 ## 🤝 Contributing
 
-Contributions sind willkommen! 
+Contributions sind willkommen!
 
 1. Fork das Projekt
 2. Erstelle Feature Branch (`git checkout -b feature/AmazingFeature`)
@@ -276,7 +281,21 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 **Anton Feldmann** - [@afeldman](https://github.com/afeldman)
 
-## 🙏 Acknowledgments
+## � Support & Sponsorship
+
+Wenn dir GMarks gefällt und du das Projekt unterstützen möchtest:
+
+**Ethereum (ETH) Sponsorship:**
+
+```
+0xDc1075fc8D4523567b8dfcBD2EBeDb25440fE196
+```
+
+[![Ethereum](https://img.shields.io/badge/Sponsor-ETH-blue?logo=ethereum)](https://etherscan.io/address/0xDc1075fc8D4523567b8dfcBD2EBeDb25440fE196)
+
+Deine Unterstützung hilft bei der Weiterentwicklung von GMarks! 🚀
+
+## �🙏 Acknowledgments
 
 - Chrome Prompt API Team
 - OpenAI, DeepSeek, Google, Mistral, Meta AI
