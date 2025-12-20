@@ -105,7 +105,7 @@ export class AIProviderManager {
       deepseek: {
         type: "deepseek",
         apiKey: "",
-        baseURL: "https://api.deepseek.com/beta",
+        baseURL: "https://api.deepseek.com/v1",
         model: "deepseek-chat",
         description: "DeepSeek (OpenAI-kompatibel)",
       },
@@ -389,21 +389,35 @@ Antworte nur mit diesem JSON-Format (keine anderen Zeichen):
         };
       }
 
-      const response = await fetch(`${config.baseURL}/models`, {
-        headers: { Authorization: `Bearer ${config.apiKey}` },
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      if (!response.ok) {
-        throw new Error("OpenAI API antwortet nicht");
+      try {
+        const response = await fetch(`${config.baseURL}/models`, {
+          headers: { Authorization: `Bearer ${config.apiKey}` },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMsg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+          throw new Error(errorMsg);
+        }
+
+        console.log("  ✅ OpenAI verfügbar");
+        return { available: true };
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
       }
-
-      console.log("  ✅ OpenAI verfügbar");
-      return { available: true };
     } catch (error) {
-      console.log("  ❌ OpenAI nicht verfügbar");
+      console.log("  ❌ OpenAI nicht verfügbar:", error.message);
       return {
         available: false,
         error: error.message,
+        help: "Überprüfe deinen API Key und Internetverbindung",
       };
     }
   }
@@ -422,21 +436,37 @@ Antworte nur mit diesem JSON-Format (keine anderen Zeichen):
         };
       }
 
-      const response = await fetch(`${config.baseURL}/models`, {
-        headers: { Authorization: `Bearer ${config.apiKey}` },
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      if (!response.ok) {
-        throw new Error("DeepSeek API antwortet nicht");
+      try {
+        const response = await fetch(`${config.baseURL}/models`, {
+          headers: { Authorization: `Bearer ${config.apiKey}` },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMsg =
+            errorData.error?.message ||
+            `HTTP ${response.status}: ${response.statusText}`;
+          throw new Error(errorMsg);
+        }
+
+        console.log("  ✅ DeepSeek verfügbar");
+        return { available: true };
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
       }
-
-      console.log("  ✅ DeepSeek verfügbar");
-      return { available: true };
     } catch (error) {
-      console.log("  ❌ DeepSeek nicht verfügbar");
+      console.log("  ❌ DeepSeek nicht verfügbar:", error.message);
       return {
         available: false,
         error: error.message,
+        help: "Überprüfe deinen API Key und Internetverbindung",
       };
     }
   }
@@ -480,21 +510,35 @@ Antworte nur mit diesem JSON-Format (keine anderen Zeichen):
         };
       }
 
-      const response = await fetch(`${config.baseURL}/models`, {
-        headers: { Authorization: `Bearer ${config.apiKey}` },
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      if (!response.ok) {
-        throw new Error("Mistral API antwortet nicht");
+      try {
+        const response = await fetch(`${config.baseURL}/models`, {
+          headers: { Authorization: `Bearer ${config.apiKey}` },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMsg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+          throw new Error(errorMsg);
+        }
+
+        console.log("  ✅ Mistral verfügbar");
+        return { available: true };
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
       }
-
-      console.log("  ✅ Mistral verfügbar");
-      return { available: true };
     } catch (error) {
-      console.log("  ❌ Mistral nicht verfügbar");
+      console.log("  ❌ Mistral nicht verfügbar:", error.message);
       return {
         available: false,
         error: error.message,
+        help: "Überprüfe deinen API Key und Internetverbindung",
       };
     }
   }
@@ -513,21 +557,35 @@ Antworte nur mit diesem JSON-Format (keine anderen Zeichen):
         };
       }
 
-      const response = await fetch(`${config.baseURL}/models`, {
-        headers: { Authorization: `Bearer ${config.apiKey}` },
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      if (!response.ok) {
-        throw new Error("Together AI API antwortet nicht");
+      try {
+        const response = await fetch(`${config.baseURL}/models`, {
+          headers: { Authorization: `Bearer ${config.apiKey}` },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMsg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+          throw new Error(errorMsg);
+        }
+
+        console.log("  ✅ Llama verfügbar");
+        return { available: true };
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
       }
-
-      console.log("  ✅ Llama verfügbar");
-      return { available: true };
     } catch (error) {
-      console.log("  ❌ Llama nicht verfügbar");
+      console.log("  ❌ Llama nicht verfügbar:", error.message);
       return {
         available: false,
         error: error.message,
+        help: "Überprüfe deinen Together AI API Key und Internetverbindung",
       };
     }
   }
