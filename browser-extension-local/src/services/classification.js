@@ -46,6 +46,9 @@ export class ClassificationService {
     // Lade Kategorien aus YAML
     await this.loadCategories();
 
+    // Prüfe und erstelle Kategorie-Ordner
+    await this.ensureCategoryFolders();
+
     // Prüfe Prompt API
     await this.checkPromptAPI();
 
@@ -53,8 +56,40 @@ export class ClassificationService {
   }
 
   /**
-   * Lade Kategorien aus YAML-Datei
+   * Prüfe und erstelle Ordner für jede Kategorie
    */
+  async ensureCategoryFolders() {
+    try {
+      logger.log("📁 Prüfe Kategorie-Ordner...");
+      const categories = Object.keys(CATEGORIES);
+
+      for (const category of categories) {
+        // Speichere in IndexedDB ob Ordner existiert
+        const folderKey = `category_folder_${category}`;
+        const folderExists = await chrome.storage.local.get(folderKey);
+
+        if (!folderExists[folderKey]) {
+          logger.log(`  📂 Erstelle Ordner für Kategorie: ${category}`);
+          // Markiere Ordner als existierend (für Verwaltung)
+          await chrome.storage.local.set({
+            [folderKey]: {
+              name: category,
+              created: new Date().toISOString(),
+              bookmarks: 0,
+            },
+          });
+        } else {
+          logger.log(`  ✅ Ordner bereits vorhanden: ${category}`);
+        }
+      }
+
+      logger.log(`  ✅ Alle ${categories.length} Kategorie-Ordner vorhanden`);
+    } catch (error) {
+      logger.warn("⚠️ Fehler beim Erstellen von Kategorie-Ordnern:", error);
+    }
+  }
+
+  /**
   async loadCategories() {
     try {
       logger.log("📂 Loading categories (using defaults)...");
@@ -255,7 +290,7 @@ export class ClassificationService {
       tags,
       summary: "",
       method: "patterns",
-      color: CATEGORIES[category]?.color || "#94a3b8",
+      color: CATEGORIES[category]?.color || "#6b7280",
     };
   }
 
