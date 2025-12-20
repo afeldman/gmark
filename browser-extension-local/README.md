@@ -15,16 +15,18 @@
 ### Installation
 
 1. **Lade die Extension in Chrome**
+
    ```bash
    # Öffne Chrome
    chrome://extensions/
-   
+
    # Aktiviere "Entwicklermodus" (oben rechts)
    # Klicke "Entpackte Erweiterung laden"
    # Wähle diesen Ordner: browser-extension-local/
    ```
 
 2. **Extension wird aktiviert** ✅
+
    - Icon erscheint in der Toolbar
    - Service Worker startet
    - Kategorien werden initialisiert
@@ -79,6 +81,7 @@ browser-extension-local/
 #### 🔧 Core Services
 
 **classification.js** - Hauptklassifikationslogik
+
 ```javascript
 ClassificationService
 ├── initialize()               // Init: Kategorien laden, Prompt API check
@@ -89,6 +92,7 @@ ClassificationService
 ```
 
 **bootstrap.js** - Batch-Verarbeitung bestehender Bookmarks
+
 ```javascript
 BootstrapService
 ├── startBootstrap()           // Bootstrap-Prozess starten
@@ -98,6 +102,7 @@ BootstrapService
 ```
 
 **ai-provider.js** - Cloud AI Provider Management
+
 ```javascript
 AIProviderSingleton
 ├── classifyWithProvider()     // Provider-Dispatcher
@@ -109,6 +114,7 @@ AIProviderSingleton
 #### 💾 Storage Layer
 
 **storage.js** - IndexedDB Manager
+
 ```javascript
 StorageManager
 ├── initDB()                   // Datenbank initialisieren
@@ -120,6 +126,7 @@ StorageManager
 ```
 
 **Datenbank Schema:**
+
 ```javascript
 // IndexedDB Store: "bookmarks"
 {
@@ -141,6 +148,7 @@ StorageManager
 #### 🎨 UI Components
 
 **popup.js** - Extension Popup
+
 ```javascript
 PopupApp
 ├── init()                     // Initialisierung
@@ -152,6 +160,7 @@ PopupApp
 ```
 
 **SimpleChart** - Custom Canvas Charts (Manifest V3 kompatibel)
+
 ```javascript
 SimpleChart
 ├── constructor(canvas, type, config)
@@ -165,6 +174,7 @@ SimpleChart
 ### Chrome Prompt API (Lokal)
 
 **Setup:**
+
 ```javascript
 // In types/ai.js
 export async function createLanguageModelSession(options) {
@@ -177,6 +187,7 @@ export async function createLanguageModelSession(options) {
 ```
 
 **Klassifikation:**
+
 ```javascript
 // HTML Body Content wird übergeben (erste 2000 Zeichen)
 const bodyContent = bookmark.content?.substring(0, 2000);
@@ -197,49 +208,51 @@ const result = await classifyWithAI(session, prompt);
 ### Cloud Providers
 
 **Provider Konfiguration:**
+
 ```javascript
 // In ai-provider.js
 const PROVIDERS = {
-  openai: { 
+  openai: {
     baseURL: "https://api.openai.com/v1",
-    model: "gpt-4o-mini"
+    model: "gpt-4o-mini",
   },
-  deepseek: { 
+  deepseek: {
     baseURL: "https://api.deepseek.com/v1",
-    model: "deepseek-chat"
+    model: "deepseek-chat",
   },
-  gemini: { 
+  gemini: {
     baseURL: "https://generativelanguage.googleapis.com/v1beta",
-    model: "gemini-1.5-flash"
+    model: "gemini-1.5-flash",
   },
-  mistral: { 
+  mistral: {
     baseURL: "https://api.mistral.ai/v1",
-    model: "mistral-small-latest"
+    model: "mistral-small-latest",
   },
-  llama: { 
+  llama: {
     baseURL: "https://api.together.xyz/v1",
-    model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
+    model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
   },
-  ollama: { 
+  ollama: {
     baseURL: "http://localhost:11434",
-    model: "llama3.2"
+    model: "llama3.2",
   },
-  lmstudio: { 
+  lmstudio: {
     baseURL: "http://localhost:1234/v1",
-    model: "local-model"
-  }
+    model: "local-model",
+  },
 };
 ```
 
 **Health Check mit Timeout:**
+
 ```javascript
 async function checkProviderAvailability(provider) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000); // 10s
-  
+
   try {
     const response = await fetch(provider.baseURL, {
-      signal: controller.signal
+      signal: controller.signal,
     });
     return response.ok;
   } catch (error) {
@@ -258,40 +271,40 @@ async function checkProviderAvailability(provider) {
 const CATEGORIES = {
   Development: {
     patterns: ["github", "stackoverflow", "npm", "code", "programming"],
-    color: "#4f46e5"  // Indigo
+    color: "#4f46e5", // Indigo
   },
   Social: {
     patterns: ["twitter", "facebook", "instagram", "linkedin", "reddit"],
-    color: "#ec4899"  // Pink
+    color: "#ec4899", // Pink
   },
   News: {
     patterns: ["news", "article", "blog", "post"],
-    color: "#f59e0b"  // Amber
+    color: "#f59e0b", // Amber
   },
   Shopping: {
     patterns: ["amazon", "shop", "buy", "cart"],
-    color: "#10b981"  // Emerald
+    color: "#10b981", // Emerald
   },
   Education: {
     patterns: ["coursera", "udemy", "learn", "course", "tutorial"],
-    color: "#8b5cf6"  // Violet
+    color: "#8b5cf6", // Violet
   },
   Entertainment: {
     patterns: ["netflix", "youtube", "spotify", "game", "movie"],
-    color: "#f43f5e"  // Rose
+    color: "#f43f5e", // Rose
   },
   Documentation: {
     patterns: ["docs", "documentation", "guide", "manual"],
-    color: "#06b6d4"  // Cyan
+    color: "#06b6d4", // Cyan
   },
   Tools: {
     patterns: ["tool", "utility", "converter", "editor"],
-    color: "#64748b"  // Slate
+    color: "#64748b", // Slate
   },
   Other: {
     patterns: ["online", "free"],
-    color: "#6b7280"  // Gray
-  }
+    color: "#6b7280", // Gray
+  },
 };
 ```
 
@@ -301,11 +314,11 @@ const CATEGORIES = {
 // In classification.js - initialize()
 async ensureCategoryFolders() {
   const categories = Object.keys(CATEGORIES);
-  
+
   for (const category of categories) {
     const folderKey = `category_folder_${category}`;
     const folderExists = await chrome.storage.local.get(folderKey);
-    
+
     if (!folderExists[folderKey]) {
       await chrome.storage.local.set({
         [folderKey]: {
@@ -324,6 +337,7 @@ async ensureCategoryFolders() {
 ### Background ↔ Content Communication
 
 **Content Script sendet DOM-Daten:**
+
 ```javascript
 // content.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -331,7 +345,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const pageData = {
       content: document.body.innerText.substring(0, 2000),
       description: document.querySelector('meta[name="description"]')?.content,
-      title: document.title
+      title: document.title,
     };
     sendResponse(pageData);
   }
@@ -340,26 +354,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 ```
 
 **Background empfängt und verarbeitet:**
+
 ```javascript
 // background.js
 async function saveBookmark(url, title, tabId) {
   const response = await chrome.tabs.sendMessage(tabId, {
-    type: "GET_PAGE_CONTENT"
+    type: "GET_PAGE_CONTENT",
   });
-  
+
   const classification = await ClassificationService.classify({
     title: title,
     url: url,
     content: response.content,
-    description: response.description
+    description: response.description,
   });
-  
+
   await StorageManager.addBookmark({
-    url, title,
+    url,
+    title,
     category: classification.category,
     confidence: classification.confidence,
     tags: classification.tags,
-    content: response.content
+    content: response.content,
   });
 }
 ```
@@ -369,13 +385,14 @@ async function saveBookmark(url, title, tabId) {
 ### Dark Theme
 
 **CSS Variables:**
+
 ```css
 :root {
-  --bg-primary: #0f172a;      /* Slate 900 */
-  --bg-secondary: #1e293b;    /* Slate 800 */
-  --text-primary: #f1f5f9;    /* Slate 100 */
-  --text-secondary: #94a3b8;  /* Slate 400 */
-  --accent-primary: #6366f1;  /* Indigo 500 */
+  --bg-primary: #0f172a; /* Slate 900 */
+  --bg-secondary: #1e293b; /* Slate 800 */
+  --text-primary: #f1f5f9; /* Slate 100 */
+  --text-secondary: #94a3b8; /* Slate 400 */
+  --accent-primary: #6366f1; /* Indigo 500 */
   --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 ```
@@ -383,17 +400,19 @@ async function saveBookmark(url, title, tabId) {
 ### Live Charts (SimpleChart)
 
 **Activity Chart (7 Tage):**
+
 ```javascript
 const activityData = prepareActivityData(bookmarks);
 // Returns: [{ label: "Mo", value: 5 }, { label: "Di", value: 8 }, ...]
 
 const chart = new SimpleChart(canvas, "line", {
-  labels: activityData.map(d => d.label),
-  values: activityData.map(d => d.value)
+  labels: activityData.map((d) => d.label),
+  values: activityData.map((d) => d.value),
 });
 ```
 
 **Category Chart (Top 5):**
+
 ```javascript
 const categoryData = prepareCategoryData(stats);
 // Returns: { labels: ["Development", "News", ...], values: [42, 28, ...] }
@@ -401,7 +420,7 @@ const categoryData = prepareCategoryData(stats);
 const chart = new SimpleChart(canvas, "doughnut", {
   labels: categoryData.labels,
   values: categoryData.values,
-  colors: ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"]
+  colors: ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"],
 });
 ```
 
@@ -410,20 +429,23 @@ const chart = new SimpleChart(canvas, "doughnut", {
 ### Debugging
 
 **Service Worker Console:**
+
 ```bash
 chrome://extensions → GMarks → "Background Service Worker" → Inspect
 ```
 
 **Logger aktivieren:**
+
 ```javascript
 // In background.js oder jeder anderen Datei
 import logger from "./utils/logger.js";
 
-logger.setLevel('debug');  // 'debug' | 'log' | 'warn' | 'error'
+logger.setLevel("debug"); // 'debug' | 'log' | 'warn' | 'error'
 logger.log("Debug message", { data: "..." });
 ```
 
 **IndexedDB inspizieren:**
+
 ```bash
 Chrome DevTools → Application → Storage → IndexedDB → GMarksDB
 ```
@@ -431,23 +453,24 @@ Chrome DevTools → Application → Storage → IndexedDB → GMarksDB
 ### Performance Monitoring
 
 **Token Usage Tracking:**
+
 ```javascript
 // In utils/usage.js
 class UsageManager {
   static async consume(tokens) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     const usage = await this.getUsage(today);
-    
+
     usage.tokens += tokens;
     usage.requests += 1;
-    
+
     await chrome.storage.local.set({ [`usage_${today}`]: usage });
   }
-  
+
   static async canConsume(tokens) {
     const dailyLimit = 50000; // 50k tokens/day
     const usage = await this.getTodayUsage();
-    return (usage.tokens + tokens) <= dailyLimit;
+    return usage.tokens + tokens <= dailyLimit;
   }
 }
 ```
@@ -455,6 +478,7 @@ class UsageManager {
 ### Testing
 
 **Manuelle Tests:**
+
 ```bash
 1. Bookmark speichern
    - Klicke Extension Icon
@@ -482,6 +506,7 @@ class UsageManager {
 ### Bootstrap System
 
 **Concurrency Protection:**
+
 ```javascript
 // In bootstrap.js
 let isRunning = false;
@@ -490,10 +515,10 @@ async function startBootstrap() {
   if (isRunning) {
     throw new Error("Bootstrap already running");
   }
-  
+
   isRunning = true;
   await chrome.storage.local.set({ bootstrapRunning: true });
-  
+
   try {
     // Process bookmarks...
   } finally {
@@ -504,10 +529,11 @@ async function startBootstrap() {
 ```
 
 **Resume Capability:**
+
 ```javascript
 async function resumeBootstrap() {
-  const state = await chrome.storage.local.get('bootstrapState');
-  
+  const state = await chrome.storage.local.get("bootstrapState");
+
   if (state.lastProcessedIndex) {
     logger.log(`Resume from index ${state.lastProcessedIndex}`);
     // Continue from last position...
@@ -518,6 +544,7 @@ async function resumeBootstrap() {
 ### Pattern-Based Confidence
 
 **Confidence Berechnung (5 Dezimalstellen):**
+
 ```javascript
 function formatConfidence(value) {
   const num = parseFloat(value) || 0.0;
@@ -534,26 +561,23 @@ const confidence = formatConfidence(rawConfidence);
 ## 📋 Manifest V3
 
 **manifest.json:**
+
 ```json
 {
   "manifest_version": 3,
   "name": "GMarks",
   "version": "1.0.0",
-  "permissions": [
-    "storage",
-    "bookmarks",
-    "tabs",
-    "activeTab",
-    "scripting"
-  ],
+  "permissions": ["storage", "bookmarks", "tabs", "activeTab", "scripting"],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
   },
-  "content_scripts": [{
-    "matches": ["<all_urls>"],
-    "js": ["src/content.js"]
-  }],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.js"]
+    }
+  ],
   "action": {
     "default_popup": "src/ui/popup.html",
     "default_icon": {
@@ -569,6 +593,7 @@ const confidence = formatConfidence(rawConfidence);
 ## 🔒 Security
 
 **Content Security Policy:**
+
 - ✅ No external scripts (Manifest V3)
 - ✅ No eval() or inline scripts
 - ✅ Canvas-basierte Charts (kein CDN)
@@ -576,6 +601,7 @@ const confidence = formatConfidence(rawConfidence);
 - ✅ Encrypted IndexedDB
 
 **Privacy:**
+
 - ✅ Lokale Chrome Prompt API (on-device)
 - ✅ Opt-in Cloud Provider
 - ✅ Keine Telemetrie
@@ -600,6 +626,7 @@ const confidence = formatConfidence(rawConfidence);
 ## 📞 Support
 
 Bei Problemen:
+
 1. Console-Logs prüfen (`chrome://extensions`)
 2. IndexedDB validieren (`DevTools → Application`)
 3. Provider-Status testen (Einstellungen)

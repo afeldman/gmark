@@ -315,10 +315,17 @@ main::-webkit-scrollbar-thumb:hover {
 .chart-container {
   height: 180px;
   position: relative;
+  width: 100%;
 }
 
 .chart-container.compact {
   height: 140px;
+}
+
+.chart-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Quick Actions */

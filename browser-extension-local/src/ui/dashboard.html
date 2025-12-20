@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>gmark - Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <!-- Header -->
+      <header class="dashboard-header">
+        <div class="header-content">
+          <div class="logo-section">
+            <h1>📚 gmark Dashboard</h1>
+            <p class="subtitle">Ihre Bookmark-Statistiken</p>
+          </div>
+          <div class="header-stats">
+            <div class="header-stat">
+              <span class="stat-label">Gesamt</span>
+              <span class="stat-value" id="total-bookmarks">0</span>
+            </div>
+            <div class="header-stat">
+              <span class="stat-label">Kategorien</span>
+              <span class="stat-value" id="total-categories">0</span>
+            </div>
+            <div class="header-stat">
+              <span class="stat-label">Heute</span>
+              <span class="stat-value" id="today-bookmarks">0</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Dashboard Grid -->
+      <main class="dashboard-grid">
+        <!-- Activity Chart -->
+        <section class="dashboard-card large">
+          <div class="card-header">
+            <h2>📊 Aktivität (30 Tage)</h2>
+            <span class="live-badge">● LIVE</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="activityChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Category Distribution -->
+        <section class="dashboard-card">
+          <div class="card-header">
+            <h2>🎯 Kategorien</h2>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Top Categories Table -->
+        <section class="dashboard-card">
+          <div class="card-header">
+            <h2>🏆 Top Kategorien</h2>
+          </div>
+          <div class="table-wrapper">
+            <table class="stats-table" id="top-categories-table">
+              <thead>
+                <tr>
+                  <th>Kategorie</th>
+                  <th>Anzahl</th>
+                  <th>%</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Recent Bookmarks -->
+        <section class="dashboard-card large">
+          <div class="card-header">
+            <h2>🕒 Letzte Bookmarks</h2>
+          </div>
+          <div class="recent-list" id="recent-bookmarks">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- Classification Stats -->
+        <section class="dashboard-card">
+          <div class="card-header">
+            <h2>🤖 KI-Statistiken</h2>
+          </div>
+          <div class="ai-stats">
+            <div class="stat-item">
+              <span class="stat-icon">🎯</span>
+              <div class="stat-info">
+                <span class="stat-title">Durchschnittl. Konfidenz</span>
+                <span class="stat-number" id="avg-confidence">0.00000</span>
+              </div>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">⚡</span>
+              <div class="stat-info">
+                <span class="stat-title">KI-Klassifizierungen</span>
+                <span class="stat-number" id="ai-classifications">0</span>
+              </div>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">🔍</span>
+              <div class="stat-info">
+                <span class="stat-title">Pattern-Match</span>
+                <span class="stat-number" id="pattern-matches">0</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Provider Usage -->
+        <section class="dashboard-card">
+          <div class="card-header">
+            <h2>🌐 AI Provider</h2>
+          </div>
+          <div class="provider-stats" id="provider-stats">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+      </main>
+
+      <!-- Footer -->
+      <footer class="dashboard-footer">
+        <p>
+          gmark Dashboard • Auto-Refresh:
+          <span id="refresh-countdown">30</span>s
+        </p>
+      </footer>
+    </div>
+
+    <script type="module" src="dashboard.js"></script>
+  </body>
+</html>

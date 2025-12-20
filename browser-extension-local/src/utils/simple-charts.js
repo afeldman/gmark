@@ -12,17 +12,33 @@ export class SimpleChart {
     this.config = config;
     this.animationFrame = null;
 
-    // Set canvas size to match display size
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    // Wait for next frame to ensure canvas has layout dimensions
+    requestAnimationFrame(() => {
+      this.initCanvas();
+      this.render();
+    });
+  }
 
-    this.render();
+  initCanvas() {
+    // Set canvas size to match display size with DPI scaling
+    const rect = this.canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+
+    // Set buffer size for high-DPI displays
+    this.canvas.width = rect.width * dpr;
+    this.canvas.height = rect.height * dpr;
+
+    // Scale drawing context
+    this.ctx.scale(dpr, dpr);
+
+    // Store logical dimensions for calculations
+    this.width = rect.width;
+    this.height = rect.height;
   }
 
   render() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // Use logical dimensions for clearRect
+    this.ctx.clearRect(0, 0, this.width, this.height);
 
     if (this.type === "line") {
       this.renderLineChart();
@@ -36,8 +52,8 @@ export class SimpleChart {
     if (!labels || !values || labels.length === 0) return;
 
     const padding = 40;
-    const width = this.canvas.width / window.devicePixelRatio - padding * 2;
-    const height = this.canvas.height / window.devicePixelRatio - padding * 2;
+    const width = this.width - padding * 2;
+    const height = this.height - padding * 2;
 
     const maxValue = Math.max(...values, 1);
     const minValue = Math.min(...values, 0);
@@ -150,8 +166,8 @@ export class SimpleChart {
     const { labels, values, colors } = this.config;
     if (!labels || !values || labels.length === 0) return;
 
-    const centerX = this.canvas.width / window.devicePixelRatio / 2;
-    const centerY = this.canvas.height / window.devicePixelRatio / 2;
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
     const radius = Math.min(centerX, centerY) - 40;
     const innerRadius = radius * 0.6;
 
@@ -290,13 +306,14 @@ export class SimpleChart {
 
   update(newConfig) {
     this.config = { ...this.config, ...newConfig };
-    this.render();
-  }
+
+    // Reinitialize canvas dimensions in case of resize
+    this.initCanvas();
 
   destroy() {
     if (this.animationFrame) {
       cancelAnimationFrame(this.animationFrame);
     }
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.clearRect(0, 0, this.width, this.height);
   }
 }
