@@ -24,12 +24,18 @@ export class SimpleChart {
     const rect = this.canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
 
-    // Set buffer size for high-DPI displays
-    this.canvas.width = rect.width * dpr;
-    this.canvas.height = rect.height * dpr;
+    // Only resize if dimensions changed
+    const newWidth = rect.width * dpr;
+    const newHeight = rect.height * dpr;
 
-    // Scale drawing context
-    this.ctx.scale(dpr, dpr);
+    if (this.canvas.width !== newWidth || this.canvas.height !== newHeight) {
+      // Reset canvas (this clears the context)
+      this.canvas.width = newWidth;
+      this.canvas.height = newHeight;
+
+      // Re-apply scale
+      this.ctx.scale(dpr, dpr);
+    }
 
     // Store logical dimensions for calculations
     this.width = rect.width;
@@ -39,7 +45,7 @@ export class SimpleChart {
   render() {
     // Skip if dimensions not yet initialized
     if (!this.width || !this.height) return;
-    
+
     // Use logical dimensions for clearRect
     this.ctx.clearRect(0, 0, this.width, this.height);
 
@@ -310,8 +316,10 @@ export class SimpleChart {
   update(newConfig) {
     this.config = { ...this.config, ...newConfig };
 
-    // Reinitialize canvas dimensions in case of resize
-    this.initCanvas();
+    // Just update dimensions without re-initializing canvas
+    const rect = this.canvas.getBoundingClientRect();
+    this.width = rect.width;
+    this.height = rect.height;
 
     this.render();
   }
