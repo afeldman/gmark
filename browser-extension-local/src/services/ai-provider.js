@@ -402,7 +402,9 @@ Antworte nur mit diesem JSON-Format (keine anderen Zeichen):
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          const errorMsg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+          const errorMsg =
+            errorData.error?.message ||
+            `HTTP ${response.status}: ${response.statusText}`;
           throw new Error(errorMsg);
         }
 
@@ -523,7 +525,9 @@ Antworte nur mit diesem JSON-Format (keine anderen Zeichen):
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          const errorMsg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+          const errorMsg =
+            errorData.error?.message ||
+            `HTTP ${response.status}: ${response.statusText}`;
           throw new Error(errorMsg);
         }
 
@@ -570,7 +574,9 @@ Antworte nur mit diesem JSON-Format (keine anderen Zeichen):
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          const errorMsg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+          const errorMsg =
+            errorData.error?.message ||
+            `HTTP ${response.status}: ${response.statusText}`;
           throw new Error(errorMsg);
         }
 

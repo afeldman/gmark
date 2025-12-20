@@ -1,482 +1,428 @@
 /**
- * GMARK Local - Popup Script
+ * GMARK Local - Modern Popup with Live Charts
  */
 
 import StorageManager from "../utils/storage.js";
 
-const app = {
-  state: "main",
-  settings: {},
+class PopupApp {
+  constructor() {
+    this.charts = {};
+    this.refreshInterval = null;
+    this.activityData = [];
+  }
 
   async init() {
     this.showLoading();
     try {
-      // Überprüfe ob Bootstrap nötig ist
-      const bootstrapStatus = await chrome.runtime.sendMessage({
-        type: "GET_BOOTSTRAP_STATUS",
-      });
-
-      if (!bootstrapStatus.complete) {
-        this.showView("bootstrap");
-        return;
-      }
-
-      await this.loadSettings();
-      await this.loadStats();
+      await this.loadData();
+      this.initCharts();
       this.attachEventListeners();
+      this.startLiveUpdates();
       this.showView("main");
     } catch (error) {
+      console.error("Init error:", error);
       this.showError(error.message);
     }
-  },
+  }
 
-  async loadSettings() {
-    this.settings = await StorageManager.getAllSettings();
-  },
+  showLoading() {
+    document.getElementById("loading").classList.remove("hidden");
+    document.getElementById("main-view").classList.add("hidden");
+  }
 
-  async loadStats() {
+  hideLoading() {
+    document.getElementById("loading").classList.add("hidden");
+    document.getElementById("main-view").classList.remove("hidden");
+  }
+
+  showView(view) {
+    document.querySelectorAll(".state").forEach((el) => {
+      el.classList.add("hidden");
+    });
+    document.getElementById(`${view}-view`).classList.remove("hidden");
+  }
+
+  async loadData() {
     const stats = await StorageManager.getStatistics();
-    document.getElementById("stat-bookmarks").textContent =
-      stats.totalBookmarks;
-    document.getElementById("stat-duplicates").textContent =
-      stats.totalDuplicates;
-    document.getElementById("stat-categories").textContent =
-      stats.categoriesCount;
-
-    await this.loadRecentBookmarks();
-  },
-
-  async loadRecentBookmarks() {
     const bookmarks = await StorageManager.getAllBookmarks();
-    const recent = bookmarks.slice(-5).reverse();
+
+    // Update hero stats
+    document.getElementById("stat-bookmarks").textContent = stats.totalBookmarks || 0;
+    document.getElementById("stat-categories").textContent = stats.categoriesCount || 0;
+    document.getElementById("stat-duplicates").textContent = stats.totalDuplicates || 0;
+
+    // Calculate bookmark trend (last 7 days)
+    const trend = this.calculateTrend(bookmarks);
+    const trendEl = document.getElementById("bookmarks-trend");
+    if (trend > 0) {
+      trendEl.className = "stat-trend positive";
+      trendEl.querySelector("span").textContent = `+${trend}`;
+    } else if (trend < 0) {
+      trendEl.className = "stat-trend negative";
+      trendEl.querySelector("span").textContent = trend;
+    } else {
+      trendEl.style.display = "none";
+    }
+
+    // Load recent activity
+    await this.loadRecentActivity(bookmarks);
+
+    // Prepare chart data
+    this.activityData = this.prepareActivityData(bookmarks);
+    this.categoryData = this.prepareCategoryData(stats);
+
+    this.hideLoading();
+  }
+
+  calculateTrend(bookmarks) {
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const recentBookmarks = bookmarks.filter(
+      (b) => b.createdAt && b.createdAt > sevenDaysAgo
+    );
+    return recentBookmarks.length;
+  }
+
+  prepareActivityData(bookmarks) {
+    const last7Days = [];
+    const now = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const count = bookmarks.filter((b) => {
+        if (!b.createdAt) return false;
+        const bookmarkDate = new Date(b.createdAt);
+        return bookmarkDate >= date && bookmarkDate < nextDate;
+      }).length;
+
+      last7Days.push({
+        label: date.toLocaleDateString("de-DE", { weekday: "short" }),
+        value: count,
+      });
+    }
+
+    return last7Days;
+  }
+
+  prepareCategoryData(stats) {
+    const categories = stats.categoriesDistribution || {};
+    const sorted = Object.entries(categories)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5);
+
+    return {
+      labels: sorted.map(([cat]) => cat),
+      values: sorted.map(([, count]) => count),
+    };
+  }
+
+  initCharts() {
+    // Activity Line Chart
+    const activityCtx = document.getElementById("activityChart").getContext("2d");
+    this.charts.activity = new Chart(activityCtx, {
+      type: "line",
+      data: {
+        labels: this.activityData.map((d) => d.label),
+        datasets: [
+          {
+            label: "Bookmarks",
+            data: this.activityData.map((d) => d.value),
+            borderColor: "#6366f1",
+            backgroundColor: "rgba(99, 102, 241, 0.1)",
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: "#6366f1",
+            pointBorderColor: "#fff",
+            pointBorderWidth: 2,
+            pointHoverRadius: 6,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false,
+          },
+          tooltip: {
+            backgroundColor: "#1e293b",
+            titleColor: "#f1f5f9",
+            bodyColor: "#94a3b8",
+            borderColor: "#334155",
+            borderWidth: 1,
+            padding: 12,
+            displayColors: false,
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: "#64748b",
+              font: { size: 11 },
+              stepSize: 1,
+            },
+            grid: {
+              color: "#334155",
+              drawBorder: false,
+            },
+          },
+          x: {
+            ticks: {
+              color: "#64748b",
+              font: { size: 11 },
+            },
+            grid: {
+              display: false,
+            },
+          },
+        },
+      },
+    });
+
+    // Category Doughnut Chart
+    const categoryCtx = document.getElementById("categoryChart").getContext("2d");
+    this.charts.category = new Chart(categoryCtx, {
+      type: "doughnut",
+      data: {
+        labels: this.categoryData.labels,
+        datasets: [
+          {
+            data: this.categoryData.values,
+            backgroundColor: [
+              "#6366f1",
+              "#8b5cf6",
+              "#ec4899",
+              "#f59e0b",
+              "#10b981",
+            ],
+            borderWidth: 0,
+            hoverOffset: 8,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "right",
+            labels: {
+              color: "#94a3b8",
+              font: { size: 11 },
+              padding: 12,
+              usePointStyle: true,
+              pointStyle: "circle",
+            },
+          },
+          tooltip: {
+            backgroundColor: "#1e293b",
+            titleColor: "#f1f5f9",
+            bodyColor: "#94a3b8",
+            borderColor: "#334155",
+            borderWidth: 1,
+            padding: 12,
+          },
+        },
+        cutout: "70%",
+      },
+    });
+  }
+
+  async loadRecentActivity(bookmarks) {
+    const recent = bookmarks
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, 5);
 
     const list = document.getElementById("recent-list");
     list.innerHTML = "";
 
     if (recent.length === 0) {
-      list.innerHTML =
-        '<p class="empty-message">Noch keine Bookmarks gespeichert</p>';
+      list.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+          <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.5;">📚</div>
+          <p>Noch keine Bookmarks</p>
+        </div>
+      `;
       return;
     }
 
     for (const bookmark of recent) {
+      const timeAgo = this.formatTimeAgo(bookmark.createdAt);
       const item = document.createElement("div");
-      item.className = "list-item";
+      item.className = "activity-item";
       item.innerHTML = `
-        <div class="bookmark-info">
-          <h3>${escapeHtml(bookmark.title)}</h3>
-          <p class="url">${escapeHtml(bookmark.url)}</p>
-          <div class="tags">
-            <span class="category">${bookmark.category}</span>
-            ${bookmark.tags
-              .map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`)
-              .join("")}
+        <div class="activity-icon">${this.getCategoryIcon(bookmark.category)}</div>
+        <div class="activity-content">
+          <div class="activity-title">${this.escapeHtml(bookmark.title)}</div>
+          <div class="activity-meta">
+            <span class="activity-badge">${bookmark.category}</span>
+            <span>${timeAgo}</span>
           </div>
         </div>
-        <button class="delete-btn" data-id="${
-          bookmark.id
-        }" title="Löschen">✕</button>
       `;
 
-      item.querySelector(".delete-btn").addEventListener("click", () => {
-        this.deleteBookmark(bookmark.id);
+      item.addEventListener("click", () => {
+        chrome.tabs.create({ url: bookmark.url });
       });
 
       list.appendChild(item);
     }
-  },
+  }
 
-  async deleteBookmark(id) {
-    if (confirm("Soll dieses Bookmark wirklich gelöscht werden?")) {
-      await StorageManager.deleteBookmark(id);
-      await this.loadStats();
-    }
-  },
+  getCategoryIcon(category) {
+    const icons = {
+      Development: "💻",
+      Social: "👥",
+      News: "📰",
+      Shopping: "🛒",
+      Education: "📚",
+      Entertainment: "🎬",
+      Documentation: "📖",
+      Tools: "🔧",
+      Other: "📌",
+    };
+    return icons[category] || "📌";
+  }
+
+  formatTimeAgo(timestamp) {
+    if (!timestamp) return "Gerade eben";
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+
+    if (seconds < 60) return "Gerade eben";
+    if (seconds < 3600) return `vor ${Math.floor(seconds / 60)}m`;
+    if (seconds < 86400) return `vor ${Math.floor(seconds / 3600)}h`;
+    return `vor ${Math.floor(seconds / 86400)}d`;
+  }
+
+  startLiveUpdates() {
+    // Refresh every 30 seconds
+    this.refreshInterval = setInterval(async () => {
+      await this.updateStats();
+    }, 30000);
+  }
+
+  async updateStats() {
+    const stats = await StorageManager.getStatistics();
+    const bookmarks = await StorageManager.getAllBookmarks();
+
+    // Animate number changes
+    this.animateValue("stat-bookmarks", stats.totalBookmarks || 0);
+    this.animateValue("stat-categories", stats.categoriesCount || 0);
+    this.animateValue("stat-duplicates", stats.totalDuplicates || 0);
+
+    // Update charts
+    const newActivityData = this.prepareActivityData(bookmarks);
+    this.charts.activity.data.datasets[0].data = newActivityData.map((d) => d.value);
+    this.charts.activity.update("none");
+
+    const newCategoryData = this.prepareCategoryData(stats);
+    this.charts.category.data.labels = newCategoryData.labels;
+    this.charts.category.data.datasets[0].data = newCategoryData.values;
+    this.charts.category.update("none");
+  }
+
+  animateValue(id, newValue) {
+    const el = document.getElementById(id);
+    const currentValue = parseInt(el.textContent) || 0;
+
+    if (currentValue === newValue) return;
+
+    const duration = 500;
+    const steps = 20;
+    const stepValue = (newValue - currentValue) / steps;
+    let currentStep = 0;
+
+    const timer = setInterval(() => {
+      currentStep++;
+      const value = Math.round(currentValue + stepValue * currentStep);
+      el.textContent = value;
+
+      if (currentStep >= steps) {
+        el.textContent = newValue;
+        clearInterval(timer);
+      }
+    }, duration / steps);
+  }
 
   attachEventListeners() {
-    // Main View
+    // Menu toggle
     document.getElementById("menu-btn").addEventListener("click", () => {
       document.getElementById("menu").classList.toggle("hidden");
     });
 
-    document.getElementById("save-current").addEventListener("click", () => {
-      this.saveCurrentPage();
+    document.getElementById("menu-close")?.addEventListener("click", () => {
+      document.getElementById("menu").classList.add("hidden");
     });
 
-    document
-      .getElementById("manage-duplicates")
-      .addEventListener("click", () => {
-        chrome.runtime.openOptionsPage?.() ||
-          chrome.tabs.create({ url: "src/ui/duplicates.html" });
-      });
-
-    document.getElementById("view-dashboard").addEventListener("click", () => {
-      chrome.tabs.create({ url: "src/ui/dashboard.html" });
-    });
-
-    // Menu
-    document.getElementById("menu-settings").addEventListener("click", () => {
-      this.showView("settings");
-    });
-
-    document.getElementById("menu-export").addEventListener("click", () => {
-      this.exportData();
-    });
-
-    document.getElementById("menu-import").addEventListener("click", () => {
-      this.importData();
-    });
-
-    document.getElementById("menu-clear").addEventListener("click", () => {
-      if (
-        confirm(
-          "Alle Daten löschen? Dies kann nicht rückgängig gemacht werden!"
-        )
-      ) {
-        StorageManager.clearAll().then(() => {
-          location.reload();
-        });
-      }
-    });
-
-    // Settings View
-    document.getElementById("back-btn").addEventListener("click", () => {
-      this.showView("main");
-    });
-
-    document.getElementById("auto-classify").addEventListener("change", (e) => {
-      StorageManager.setSetting("autoClassify", e.target.checked);
-    });
-
-    document
-      .getElementById("auto-detect-duplicates")
-      .addEventListener("change", (e) => {
-        StorageManager.setSetting("autoDetectDuplicates", e.target.checked);
-      });
-
-    document
-      .getElementById("similarity-threshold")
-      .addEventListener("change", (e) => {
-        const value = parseFloat(e.target.value);
-        document.getElementById("threshold-value").textContent =
-          value.toFixed(1);
-        StorageManager.setSetting("similarityThreshold", value);
-      });
-
-    document
-      .getElementById("use-prompt-api")
-      .addEventListener("change", (e) => {
-        StorageManager.setSetting("usePromptAPI", e.target.checked);
-      });
-
-    // Error View
-    document.getElementById("error-close").addEventListener("click", () => {
-      this.showView("main");
-    });
-
-    // Bootstrap View
-    const bootstrapBtn = document.getElementById("start-bootstrap-btn");
-    if (bootstrapBtn) {
-      bootstrapBtn.addEventListener("click", () => {
-        this.startBootstrap();
-      });
-    }
-  },
-
-  async saveCurrentPage() {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
-
-    try {
-      const content = await chrome.tabs.sendMessage(tab.id, {
-        type: "GET_PAGE_CONTENT",
-      });
-
-      const bookmark = {
+    // Save current page
+    document.getElementById("save-current").addEventListener("click", async () => {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      chrome.runtime.sendMessage({
+        type: "SAVE_BOOKMARK",
         url: tab.url,
-        title: tab.title || content.title,
-        content: content.content,
-        description: content.description,
-        category: "Uncategorized",
-        tags: [],
-        summary: "",
-        confidenceScore: 0,
-      };
-
-      // Check Duplikate
-      const existing = await StorageManager.getBookmarkByNormalizedUrl(
-        StorageManager.normalizeUrl(bookmark.url)
-      );
-
-      if (existing) {
-        if (
-          confirm(
-            `Bookmark bereits vorhanden:\n\n${existing.title}\n\nÜberschreiben?`
-          )
-        ) {
-          await StorageManager.updateBookmark(existing.id, bookmark);
-        }
-        return;
-      }
-
-      await StorageManager.addBookmark(bookmark);
-      alert("✅ Bookmark gespeichert!");
-      await this.loadStats();
-    } catch (error) {
-      this.showError(`Fehler beim Speichern: ${error.message}`);
-    }
-  },
-
-  async exportData() {
-    const data = await StorageManager.exportToJSON();
-    const json = JSON.stringify(data, null, 2);
-
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `gmark-local-${Date.now()}.json`;
-    link.click();
-
-    alert("✅ Daten exportiert!");
-  },
-
-  async importData() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "application/json";
-
-    input.addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        await StorageManager.importFromJSON(data);
-        alert("✅ Daten importiert!");
-        await this.loadStats();
-      } catch (error) {
-        this.showError(`Fehler beim Importieren: ${error.message}`);
-      }
+        title: tab.title,
+      });
+      setTimeout(() => this.loadData(), 500);
     });
 
-    input.click();
-  },
-
-  showView(viewName) {
-    document.querySelectorAll(".state").forEach((el) => {
-      el.classList.add("hidden");
+    // Open dashboard
+    document.getElementById("view-dashboard").addEventListener("click", () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL("src/ui/dashboard.html") });
     });
 
-    if (viewName === "main") {
-      document.getElementById("main-view").classList.remove("hidden");
-    } else if (viewName === "settings") {
-      this.populateSettingsView();
-      document.getElementById("settings-view").classList.remove("hidden");
-    } else if (viewName === "error") {
-      document.getElementById("error-view").classList.remove("hidden");
-    }
+    // Manage duplicates
+    document.getElementById("manage-duplicates")?.addEventListener("click", () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL("src/ui/duplicates.html") });
+    });
 
-    this.state = viewName;
-  },
+    // Settings
+    document.getElementById("menu-settings")?.addEventListener("click", () => {
+      chrome.runtime.openOptionsPage();
+    });
 
-  populateSettingsView() {
-    document.getElementById("auto-classify").checked =
-      this.settings.autoClassify ?? true;
-    document.getElementById("auto-detect-duplicates").checked =
-      this.settings.autoDetectDuplicates ?? true;
-    document.getElementById("similarity-threshold").value =
-      this.settings.similarityThreshold ?? 0.8;
-    document.getElementById("threshold-value").textContent = (
-      this.settings.similarityThreshold ?? 0.8
-    ).toFixed(1);
-    document.getElementById("use-prompt-api").checked =
-      this.settings.usePromptAPI ?? true;
-  },
+    // Export
+    document.getElementById("menu-export")?.addEventListener("click", async () => {
+      const bookmarks = await StorageManager.getAllBookmarks();
+      const dataStr = JSON.stringify(bookmarks, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `gmark-export-${Date.now()}.json`;
+      a.click();
+    });
+  }
 
-  showLoading() {
-    document.getElementById("loading").classList.remove("hidden");
-    document.getElementById("main-view").classList.add("hidden");
-  },
+  escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
 
   showError(message) {
-    document.getElementById("error-message").textContent = message;
-    this.showView("error");
-  },
+    console.error("Error:", message);
+  }
 
-  // Bootstrap-Methoden
-  async startBootstrap() {
-    const progressDiv = document.getElementById("bootstrap-progress");
-    const btn = document.getElementById("start-bootstrap-btn");
-
-    // Zeige Progress-Bereich
-    progressDiv.classList.remove("hidden");
-    btn.disabled = true;
-    btn.textContent = "⏳ Wird ausgeführt...";
-
-    // Höre auf Progress-Updates
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message.type === "BOOTSTRAP_PROGRESS") {
-        this.updateBootstrapProgress(message.progress);
-      }
-    });
-
-    try {
-      // Starte Bootstrap
-      const result = await chrome.runtime.sendMessage({
-        type: "START_BOOTSTRAP",
-      });
-
-      if (result.success) {
-        document.getElementById("progress-text").textContent =
-          "✅ Importieren abgeschlossen!";
-
-        // Warte 2 Sekunden dann zeige Main View
-        setTimeout(() => {
-          this.init();
-        }, 2000);
-      } else if (result.configured === false) {
-        // Chrome ist nicht konfiguriert - zeige Dialog mit Optionen
-        this.showConfigurationDialog(result);
-      } else {
-        this.showError(result.error || "Bootstrap fehlgeschlagen");
-      }
-    } catch (error) {
-      this.showError(error.message);
-    } finally {
-      btn.disabled = false;
+  destroy() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
     }
-  },
-
-  showConfigurationDialog(result) {
-    // Verberge die Progress Bar
-    const progressSection = document.getElementById("bootstrap-view");
-    if (progressSection) {
-      progressSection.style.display = "none";
-    }
-
-    const dialog = document.createElement("div");
-    dialog.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-    `;
-
-    const content = document.createElement("div");
-    content.style.cssText = `
-      background: white;
-      border-radius: 12px;
-      padding: 30px;
-      max-width: 600px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    `;
-
-    content.innerHTML = `
-      <h2 style="margin-top: 0; color: #333;">⚙️ Chrome Konfiguration erforderlich</h2>
-      <p style="color: #666; line-height: 1.6;">
-        Dein Browser benötigt die Prompt API (Gemini Nano) Konfiguration.
-        Du kannst entweder:
-      </p>
-      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-        <h4 style="margin-top: 0; color: #333;">Option 1: Chrome konfigurieren</h4>
-        <p style="margin: 0; color: #666; font-size: 13px;">
-          Aktiviere Prompt API und lade Gemini Nano herunter
-        </p>
-      </div>
-      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-        <h4 style="margin-top: 0; color: #333;">Option 2: Ollama/LM Studio nutzen</h4>
-        <p style="margin: 0; color: #666; font-size: 13px;">
-          Wechsle zu einem lokalen AI Provider in den Einstellungen
-        </p>
-      </div>
-      <div style="display: flex; gap: 10px; margin-top: 30px;">
-        <button id="btn-configure-chrome" style="
-          flex: 1;
-          padding: 12px;
-          background: #667eea;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 600;
-        ">🔧 Chrome konfigurieren</button>
-        <button id="btn-use-alternative" style="
-          flex: 1;
-          padding: 12px;
-          background: #10b981;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 600;
-        ">⚙️ Provider wechseln</button>
-      </div>
-    `;
-
-    dialog.appendChild(content);
-    document.body.appendChild(dialog);
-
-    document
-      .getElementById("btn-configure-chrome")
-      .addEventListener("click", () => {
-        // Öffne alle Chrome-Flags in neuen Tabs
-        chrome.tabs.create({
-          url: "chrome://flags/#prompt-api-for-gemini-nano",
-        });
-        chrome.tabs.create({
-          url: "chrome://components",
-        });
-        chrome.tabs.create({
-          url: "chrome://flags/#optimization-guide-on-device-model",
-        });
-        dialog.remove();
-        // Zeige Instructions
-        if (progressSection) {
-          progressSection.style.display = "block";
-        }
-      });
-
-    document
-      .getElementById("btn-use-alternative")
-      .addEventListener("click", () => {
-        chrome.runtime.openOptionsPage();
-        dialog.remove();
-      });
-  },
-
-  updateBootstrapProgress(progress) {
-    const percentage = progress.percentage || 0;
-    document.getElementById("progress-fill").style.width = percentage + "%";
-    document.getElementById(
-      "progress-text"
-    ).textContent = `${progress.processed}/${progress.total} Bookmarks verarbeitet (${percentage}%)`;
-    document.getElementById("stat-success").textContent = progress.success;
-    document.getElementById("stat-failed").textContent = progress.failed;
-    document.getElementById("stat-skipped").textContent = progress.skipped;
-  },
-};
-
-// Utility
-function escapeHtml(text) {
-  const map = {
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;",
-  };
-  return text.replace(/[&<>"']/g, (m) => map[m]);
+    Object.values(this.charts).forEach((chart) => chart.destroy());
+  }
 }
 
-// Init
+// Initialize app
+const app = new PopupApp();
 document.addEventListener("DOMContentLoaded", () => app.init());
+
+// Cleanup on unload
+window.addEventListener("beforeunload", () => app.destroy());
