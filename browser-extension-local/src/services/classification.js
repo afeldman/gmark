@@ -90,6 +90,8 @@ export class ClassificationService {
   }
 
   /**
+   * Lade Kategorien aus YAML-Datei
+   */
   async loadCategories() {
     try {
       logger.log("📂 Loading categories (using defaults)...");
@@ -331,6 +333,9 @@ Du bist ein Bookmark-Klassifizierer. Klassifiziere das folgende Bookmark in EINE
 - Shopping (E-Commerce, Produkte)
 - Education (Kurse, Tutorials, Lernen)
 - Entertainment (Filme, Musik, Spiele, Streaming)
+- Documentation (Doku, Guides, Referenzen)
+- Tools (Online-Tools, Utilities)
+- Other (Sonstiges)
 - Documentation (Doku, Guides, Referenzen)
 - Tools (Online-Tools, Utilities)
 - Other (Sonstiges)
