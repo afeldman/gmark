@@ -232,8 +232,9 @@ export class ClassificationService {
       ([, a], [, b]) => b - a
     )[0];
     const category = bestCategory?.[0] || "Other";
-    const maxScore = Math.max(...Object.values(scores), 1);
-    const rawConfidence = maxScore > 0 ? Math.min(bestCategory?.[1] / maxScore, 1) : 0.2;
+    const maxScore = Math.max(...Object.values(scores), 1.0);
+    const rawConfidence =
+      maxScore > 0 ? Math.min(bestCategory?.[1] / maxScore, 1.0) : 0.2;
     const confidence = formatConfidence(rawConfidence);
 
     logger.log("  Scores:", scores);

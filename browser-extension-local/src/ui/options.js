@@ -81,7 +81,24 @@ testProviderBtn.addEventListener("click", testProvider);
 resetBtn.addEventListener("click", resetSettings);
 
 // Auto-Save beim Ändern von Checkboxen
-autoClassify.addEventListener("change", (e) => {
+autoClassify.addEventListener("change", async (e) => {
+  // Prüfe ob Bootstrap läuft
+  const bootstrapRunning = await chrome.runtime
+    .sendMessage({
+      type: "getSetting",
+      key: "bootstrapRunning",
+    })
+    .catch(() => ({ value: false }));
+
+  if (bootstrapRunning.value) {
+    console.warn(
+      "⚠️ Bootstrap läuft noch - Änderungen könnten abgebrochen werden"
+    );
+    showStatus("warning", "⚠️ Warte bis Bootstrap beendet ist", "saveStatus");
+    e.target.checked = !e.target.checked; // Revert
+    return;
+  }
+
   chrome.runtime
     .sendMessage({
       type: "setSetting",
@@ -95,7 +112,24 @@ autoClassify.addEventListener("change", (e) => {
     });
 });
 
-autoDetectDuplicates.addEventListener("change", (e) => {
+autoDetectDuplicates.addEventListener("change", async (e) => {
+  // Prüfe ob Bootstrap läuft
+  const bootstrapRunning = await chrome.runtime
+    .sendMessage({
+      type: "getSetting",
+      key: "bootstrapRunning",
+    })
+    .catch(() => ({ value: false }));
+
+  if (bootstrapRunning.value) {
+    console.warn(
+      "⚠️ Bootstrap läuft noch - Änderungen könnten abgebrochen werden"
+    );
+    showStatus("warning", "⚠️ Warte bis Bootstrap beendet ist", "saveStatus");
+    e.target.checked = !e.target.checked; // Revert
+    return;
+  }
+
   chrome.runtime
     .sendMessage({
       type: "setSetting",
@@ -185,6 +219,22 @@ if (llamaApiKey) {
  * Save API Key securely
  */
 async function saveAPIKey(provider, apiKey) {
+  // Prüfe ob Bootstrap läuft
+  const bootstrapRunning = await chrome.runtime
+    .sendMessage({
+      type: "getSetting",
+      key: "bootstrapRunning",
+    })
+    .catch(() => ({ value: false }));
+
+  if (bootstrapRunning.value) {
+    console.warn(
+      "⚠️ Bootstrap läuft noch - Änderungen könnten abgebrochen werden"
+    );
+    showStatus("warning", "⚠️ Warte bis Bootstrap beendet ist", "saveStatus");
+    return;
+  }
+
   console.log(`💾 Speichere ${provider} API Key...`);
 
   try {
@@ -207,6 +257,22 @@ async function saveAPIKey(provider, apiKey) {
  * Save individual provider field
  */
 async function saveProviderField(provider, field, value) {
+  // Prüfe ob Bootstrap läuft
+  const bootstrapRunning = await chrome.runtime
+    .sendMessage({
+      type: "getSetting",
+      key: "bootstrapRunning",
+    })
+    .catch(() => ({ value: false }));
+
+  if (bootstrapRunning.value) {
+    console.warn(
+      "⚠️ Bootstrap läuft noch - Änderungen könnten abgebrochen werden"
+    );
+    showStatus("warning", "⚠️ Warte bis Bootstrap beendet ist", "saveStatus");
+    return;
+  }
+
   console.log(`💾 Speichere ${provider}.${field}:`, value);
 
   try {
@@ -372,6 +438,28 @@ async function handleProviderChange() {
 
   // Auto-Save Provider-Auswahl (nur wenn nicht initial load)
   if (!isInitialLoad) {
+    // Prüfe ob Bootstrap läuft
+    const bootstrapRunning = await chrome.runtime
+      .sendMessage({
+        type: "getSetting",
+        key: "bootstrapRunning",
+      })
+      .catch(() => ({ value: false }));
+
+    if (bootstrapRunning.value) {
+      console.warn(
+        "⚠️ Bootstrap läuft noch - Provider-Wechsel wird verhindert"
+      );
+      showStatus(
+        "error",
+        "❌ Provider kann während Bootstrap nicht gewechselt werden",
+        "saveStatus"
+      );
+      // Revert to previous provider
+      aiProviderSelect.value = provider;
+      return;
+    }
+
     try {
       await chrome.runtime.sendMessage({
         type: "setSetting",
@@ -664,6 +752,27 @@ function clearStatus(target = "providerStatus") {
  */
 async function handlePromptApiToggle(e) {
   const enabled = e.target.checked;
+
+  // Prüfe ob Bootstrap läuft
+  const bootstrapRunning = await chrome.runtime
+    .sendMessage({
+      type: "getSetting",
+      key: "bootstrapRunning",
+    })
+    .catch(() => ({ value: false }));
+
+  if (bootstrapRunning.value) {
+    console.warn(
+      "⚠️ Bootstrap läuft noch - Prompt API-Wechsel wird verhindert"
+    );
+    showStatus(
+      "error",
+      "❌ Prompt API kann während Bootstrap nicht geändert werden",
+      "promptApiStatus"
+    );
+    promptApiToggle.checked = !enabled; // Revert
+    return;
+  }
 
   try {
     if (enabled) {

@@ -18,6 +18,7 @@ export class BootstrapService {
     this.bookmarksToProcess = 0;
     this.bookmarksProcessed = 0;
     this.bootstrapComplete = false;
+    this.isRunning = false;
   }
 
   /**
@@ -27,6 +28,21 @@ export class BootstrapService {
    */
   async runBootstrap(onProgress) {
     try {
+      // ============================================================
+      // Prüfe ob bereits Bootstrap läuft
+      // ============================================================
+      if (this.isRunning) {
+        logger.warn("⚠️ Bootstrap läuft bereits!");
+        return {
+          success: false,
+          message: "Bootstrap is already running",
+          error: "Another bootstrap process is in progress",
+        };
+      }
+
+      this.isRunning = true;
+      await StorageManager.setSetting("bootstrapRunning", true);
+
       logger.log("\n" + "=".repeat(60));
       logger.log("🚀 GMARK Bootstrap startet...");
       logger.log("=".repeat(60) + "\n");
@@ -284,6 +300,11 @@ export class BootstrapService {
         success: false,
         error: error.message,
       };
+    } finally {
+      // Markiere Bootstrap als beendet
+      this.isRunning = false;
+      await StorageManager.setSetting("bootstrapRunning", false);
+      logger.log("  ✅ Bootstrap-Flag zurückgesetzt");
     }
   }
 
