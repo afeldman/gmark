@@ -309,6 +309,9 @@ export class SimpleChart {
 
     // Reinitialize canvas dimensions in case of resize
     this.initCanvas();
+    
+    this.render();
+  }
 
   destroy() {
     if (this.animationFrame) {
