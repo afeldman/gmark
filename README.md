@@ -289,6 +289,10 @@ Wenn dir GMarks gefällt und du das Projekt unterstützen möchtest:
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow?logo=buy-me-a-coffee)](https://buymeacoffee.com/afeldman)
 
+**🌟 GitHub Sponsors:**
+
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor%20on%20GitHub-Support-ea4aaa?logo=github)](https://github.com/sponsors/afeldman)
+
 **Ethereum (ETH) Sponsorship:**
 
 ```
