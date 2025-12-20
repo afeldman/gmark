@@ -37,6 +37,9 @@ export class SimpleChart {
   }
 
   render() {
+    // Skip if dimensions not yet initialized
+    if (!this.width || !this.height) return;
+    
     // Use logical dimensions for clearRect
     this.ctx.clearRect(0, 0, this.width, this.height);
 
@@ -309,7 +312,7 @@ export class SimpleChart {
 
     // Reinitialize canvas dimensions in case of resize
     this.initCanvas();
-    
+
     this.render();
   }
 
