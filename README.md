@@ -290,11 +290,20 @@ Wenn dir GMarks gefällt und du das Projekt unterstützen möchtest:
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow?logo=buy-me-a-coffee)](https://buymeacoffee.com/afeldman)
 
 **Ethereum (ETH) Sponsorship:**
+
 ```
 0xDc1075fc8D4523567b8dfcBD2EBeDb25440fE196
 ```
 
 [![Ethereum](https://img.shields.io/badge/Sponsor-ETH-blue?logo=ethereum)](https://etherscan.io/address/0xDc1075fc8D4523567b8dfcBD2EBeDb25440fE196)
+
+**Bitcoin (BTC) Sponsorship:**
+
+```
+bc1qn7h9dfpjg72vc92u05rmq9zj7743ee23th3ana
+```
+
+[![Bitcoin](https://img.shields.io/badge/Sponsor-BTC-orange?logo=bitcoin)](https://blockchair.com/bitcoin/address/bc1qn7h9dfpjg72vc92u05rmq9zj7743ee23th3ana)
 
 Deine Unterstützung hilft bei der Weiterentwicklung von GMarks! 🚀
 
