@@ -110,6 +110,10 @@ export class ClassificationService {
         patterns: ["online", "free"],
         color: "#6b7280",
       },
+      Misc: {
+        patterns: [],
+        color: "#94a3b8",
+      },
     };
   }
 
@@ -175,12 +179,12 @@ export class ClassificationService {
     } catch (error) {
       logger.error("❌ Classification error:", error);
       return {
-        category: "Other",
+        category: "Misc",
         confidence: formatConfidence(0.3),
         tags: [],
         summary: "",
         method: "error-fallback",
-        color: "#6b7280",
+        color: "#94a3b8",
       };
     }
   }
@@ -231,7 +235,13 @@ export class ClassificationService {
     const bestCategory = Object.entries(scores).sort(
       ([, a], [, b]) => b - a
     )[0];
-    const category = bestCategory?.[0] || "Other";
+
+    // Wenn kein Score > 0, verwende Misc statt Other
+    let category = bestCategory?.[0] || "Misc";
+    if (bestCategory?.[1] === 0 || !bestCategory) {
+      category = "Misc";
+    }
+
     const maxScore = Math.max(...Object.values(scores), 1.0);
     const rawConfidence =
       maxScore > 0 ? Math.min(bestCategory?.[1] / maxScore, 1.0) : 0.2;
@@ -249,7 +259,7 @@ export class ClassificationService {
       tags,
       summary: "",
       method: "patterns",
-      color: CATEGORIES[category]?.color || "#6b7280",
+      color: CATEGORIES[category]?.color || "#94a3b8",
     };
   }
 
@@ -274,6 +284,14 @@ export class ClassificationService {
 
       logger.log("  ✅ Session created");
 
+      // Kürze HTML-Body-Content auf erste 2000 Zeichen
+      const bodyContent = bookmark.content
+        ? bookmark.content.substring(0, 2000)
+        : "";
+      const bodySection = bodyContent
+        ? `\nSeiten-Inhalt (erste 2000 Zeichen):\n${bodyContent}\n`
+        : "";
+
       const prompt = `
 Du bist ein Bookmark-Klassifizierer. Klassifiziere das folgende Bookmark in EINER der folgenden Kategorien:
 - Development (Programmierung, Code, APIs)
@@ -285,12 +303,14 @@ Du bist ein Bookmark-Klassifizierer. Klassifiziere das folgende Bookmark in EINE
 - Documentation (Doku, Guides, Referenzen)
 - Tools (Online-Tools, Utilities)
 - Other (Sonstiges)
+- Misc (Verschiedenes, wenn keine andere Kategorie passt)
 
 Bookmark:
 Titel: ${bookmark.title}
 Beschreibung: ${bookmark.description || "Keine"}
 URL: ${bookmark.url}
 
+${bodySection}
 Antwort im JSON-Format:
 {
   "category": "...",
@@ -328,12 +348,12 @@ Antwort (nur JSON, keine anderen Worte):
       logger.log("  ✅ AI classification result:", result.category);
 
       return {
-        category: result.category || "Other",
+        category: result.category || "Misc",
         confidence: formatConfidence(result.confidence || 0.5),
         tags: result.tags || [],
         summary: result.summary || "",
         method: "prompt-api",
-        color: CATEGORIES[result.category]?.color || "#6b7280",
+        color: CATEGORIES[result.category]?.color || "#94a3b8",
       };
     } catch (error) {
       logger.error("❌ Prompt API classification error:", error);
@@ -411,7 +431,7 @@ Antwort (nur JSON, keine anderen Worte):
         logger.error(`Classification failed for ${bookmark.id}:`, error);
         results.push({
           bookmarkId: bookmark.id,
-          category: "Other",
+          category: "Misc",
           confidence: formatConfidence(0),
           tags: [],
           summary: "",
