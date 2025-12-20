@@ -110,10 +110,6 @@ export class ClassificationService {
         patterns: ["online", "free"],
         color: "#6b7280",
       },
-      Misc: {
-        patterns: [],
-        color: "#94a3b8",
-      },
     };
   }
 
@@ -179,12 +175,12 @@ export class ClassificationService {
     } catch (error) {
       logger.error("❌ Classification error:", error);
       return {
-        category: "Misc",
+        category: "Other",
         confidence: formatConfidence(0.3),
         tags: [],
         summary: "",
         method: "error-fallback",
-        color: "#94a3b8",
+        color: "#6b7280",
       };
     }
   }
@@ -236,10 +232,10 @@ export class ClassificationService {
       ([, a], [, b]) => b - a
     )[0];
 
-    // Wenn kein Score > 0, verwende Misc statt Other
-    let category = bestCategory?.[0] || "Misc";
+    // Wenn kein Score > 0, verwende Other als Fallback
+    let category = bestCategory?.[0] || "Other";
     if (bestCategory?.[1] === 0 || !bestCategory) {
-      category = "Misc";
+      category = "Other";
     }
 
     const maxScore = Math.max(...Object.values(scores), 1.0);
@@ -348,12 +344,12 @@ Antwort (nur JSON, keine anderen Worte):
       logger.log("  ✅ AI classification result:", result.category);
 
       return {
-        category: result.category || "Misc",
+        category: result.category || "Other",
         confidence: formatConfidence(result.confidence || 0.5),
         tags: result.tags || [],
         summary: result.summary || "",
         method: "prompt-api",
-        color: CATEGORIES[result.category]?.color || "#94a3b8",
+        color: CATEGORIES[result.category]?.color || "#6b7280",
       };
     } catch (error) {
       logger.error("❌ Prompt API classification error:", error);
@@ -431,7 +427,7 @@ Antwort (nur JSON, keine anderen Worte):
         logger.error(`Classification failed for ${bookmark.id}:`, error);
         results.push({
           bookmarkId: bookmark.id,
-          category: "Misc",
+          category: "Other",
           confidence: formatConfidence(0),
           tags: [],
           summary: "",
