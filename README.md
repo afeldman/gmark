@@ -285,8 +285,11 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 Wenn dir GMarks gefällt und du das Projekt unterstützen möchtest:
 
-**Ethereum (ETH) Sponsorship:**
+**☕ Buy Me A Coffee:**
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow?logo=buy-me-a-coffee)](https://buymeacoffee.com/afeldman)
+
+**Ethereum (ETH) Sponsorship:**
 ```
 0xDc1075fc8D4523567b8dfcBD2EBeDb25440fE196
 ```
